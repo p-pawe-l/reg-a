@@ -1,0 +1,23 @@
+{"timestamp":"2026-01-02T09:59:59.000Z","type":"session_meta","payload":{"id":"01990000-0000-7000-8000-000000000001","cwd":"/work/demo","timestamp":"2026-01-02T09:59:58.000Z","cli_version":"0.0.0-test"}}
+{"timestamp":"2026-01-02T10:00:00.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-1","started_at":1767348000}}
+{"timestamp":"2026-01-02T10:00:00.100Z","type":"turn_context","payload":{"model":"gpt-test","cwd":"/work/demo"}}
+{"timestamp":"2026-01-02T10:00:00.200Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-1","item":{"type":"UserMessage","content":[{"type":"text","text":"Fix the typo in README.md"}]}}}
+{"timestamp":"2026-01-02T10:00:00.300Z","type":"response_item","payload":{"type":"additional_tools","tools":[]}}
+{"timestamp":"2026-01-02T10:00:01.000Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-1","item":{"type":"Reasoning","summary_text":["synthetic"]}}}
+{"timestamp":"2026-01-02T10:00:02.000Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-1","item":{"type":"AgentMessage","phase":"commentary","content":[{"type":"text","text":"Looking at README."}]}}}
+{"timestamp":"2026-01-02T10:00:03.000Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-1","item":{"type":"CommandExecution","command":["/usr/bin/bash","-lc","cat README.md"],"exit_code":0,"aggregated_output":"Helo world"}}}
+{"timestamp":"2026-01-02T10:00:05.000Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-1","item":{"type":"FileChange","changes":{"/work/demo/README.md":{"type":"update"}}}}}
+{"timestamp":"2026-01-02T10:00:06.000Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-1","item":{"type":"AgentMessage","phase":"final_answer","content":[{"type":"text","text":"Fixed the typo."}]}}}
+{"timestamp":"2026-01-02T10:00:12.000Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-1","duration_ms":12000,"completed_at":1767348012,"last_agent_message":"Fixed the typo in README.md."}}
+{"timestamp":"2026-01-02T10:00:13.000Z","type":"world_state","payload":{"full":true}}
+not json at all
+{"timestamp":"2026-01-02T10:01:00.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-bg","started_at":1767348060}}
+{"timestamp":"2026-01-02T10:01:01.000Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-bg","item":{"type":"AgentMessage","content":[{"type":"text","text":"Background work."}]}}}
+{"timestamp":"2026-01-02T10:01:02.000Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-bg","duration_ms":2000}}
+{"timestamp":"2026-01-02T10:02:00.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-2","started_at":1767348120}}
+{"timestamp":"2026-01-02T10:02:00.500Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-2","item":{"type":"UserMessage","content":[{"type":"text","text":"Add a CHANGELOG"}]}}}
+{"timestamp":"2026-01-02T10:02:03.000Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-2","item":{"type":"FileChange","changes":{"/work/demo/CHANGELOG.md":{"type":"add"}}}}}
+{"timestamp":"2026-01-02T10:02:07.000Z","type":"event_msg","payload":{"type":"turn_aborted","turn_id":"turn-2","reason":"interrupted","completed_at":1767348127}}
+{"timestamp":"2026-01-02T10:03:00.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-3","started_at":1767348180}}
+{"timestamp":"2026-01-02T10:03:00.500Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"turn-3","item":{"type":"UserMessage","content":[{"type":"text","text":"Still running"}]}}}
+{"timestamp":"2026-01-02T10:03:01.000Z","type":"event_msg","payload":{"type":"item_compl

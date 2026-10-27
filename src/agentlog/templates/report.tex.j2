@@ -1,0 +1,121 @@
+\#{ Jinja2 with LaTeX-safe delimiters: BLOCK for statements, VAR for values.
+    Every value from the session must go through the tex, tt or paragraphs filter. }
+\documentclass[a4paper,10pt]{article}
+\usepackage{fontspec}
+\usepackage[\VAR{babel},shorthands=off]{babel}
+\usepackage[margin=2cm]{geometry}
+\usepackage{longtable,booktabs,array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\setmainfont{Latin Modern Roman}
+\setmonofont{Latin Modern Mono}[Scale=0.95]
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setlist{nosep,leftmargin=1.4em}
+\definecolor{muted}{gray}{0.4}
+\definecolor{success}{HTML}{1B7F3B}
+\definecolor{partial}{HTML}{A66300}
+\definecolor{failed}{HTML}{B3261E}
+\definecolor{question}{HTML}{2457A6}
+\newcommand{\outcome}[2]{\textcolor{#1}{\textbf{#2}}}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{\VAR{L.report}: \VAR{(s.title or s.session_id)|tex}}
+\date{\VAR{s.started_at|localtime}}
+\author{}
+
+\begin{document}
+\maketitle
+\vspace{-2em}
+
+\section*{\VAR{L.overview}}
+\begin{tabular}{@{}P{4cm}P{12.5cm}@{}}
+\VAR{L.tool} & \VAR{s.tool|tex} \\
+\VAR{L.session} & \VAR{s.session_id|tt} \\
+\BLOCK{if s.cwd}
+\VAR{L.directory} & \VAR{s.cwd|tt} \\
+\BLOCK{endif}
+\VAR{L.started} & \VAR{s.started_at|localtime} \\
+\VAR{L.turns} & \VAR{s.turns|length} \\
+\VAR{L.work_time} & \VAR{s.total_work_time_s|duration} \\
+\VAR{L.models} & \VAR{(models|join(", ") or L.none)|tex} \\
+\end{tabular}
+
+\BLOCK{if s.turns}
+\rowcolors{2}{gray!8}{white}
+\begin{longtable}{@{}r P{1.2cm} P{1.5cm} P{1.9cm} P{9.6cm}@{}}
+\toprule
+\# & \VAR{L.time} & \VAR{L.duration} & \VAR{L.outcome} & \VAR{L.prompt} \\
+\midrule
+\endhead
+\BLOCK{for t in s.turns}
+\hyperref[turn:\VAR{t.index}]{\VAR{t.index}} & \VAR{t.started_at|localtime("%H:%M")} & \VAR{t.work_time_s|duration} & \BLOCK{if t.summary}\outcome{\VAR{t.summary.outcome}}{\VAR{L.outcomes[t.summary.outcome]}}\BLOCK{else}\textcolor{muted}{---}\BLOCK{endif}\BLOCK{if t.interrupted} \textcolor{muted}{(\VAR{L.interrupted})}\BLOCK{endif} & \VAR{t.user_prompt|clip(160)|tex} \\
+\BLOCK{endfor}
+\bottomrule
+\end{longtable}
+
+\section*{\VAR{L.details}}
+\BLOCK{for t in s.turns}
+\subsection*{\VAR{L.turn} \VAR{t.index}\quad{\normalfont\small\textcolor{muted}{\VAR{t.started_at|localtime} · \VAR{t.work_time_s|duration}\BLOCK{if t.model} · \VAR{t.model|tex}\BLOCK{endif}\BLOCK{if t.interrupted} · \VAR{L.interrupted}\BLOCK{endif}}}}
+\phantomsection\label{turn:\VAR{t.index}}
+
+\textbf{\VAR{L.prompt}}
+\begin{quote}\small
+\VAR{t.user_prompt|clip(3000)|paragraphs}
+\end{quote}
+
+\BLOCK{if t.summary}
+\textbf{\VAR{L.summary}} \outcome{\VAR{t.summary.outcome}}{[\VAR{L.outcomes[t.summary.outcome]}]}
+
+\VAR{t.summary.summary|paragraphs}
+
+\BLOCK{if t.summary.actions}
+\textbf{\VAR{L.actions}}
+\begin{itemize}
+\BLOCK{for a in t.summary.actions}
+\item{}\VAR{a|tex}
+\BLOCK{endfor}
+\end{itemize}
+\BLOCK{endif}
+\BLOCK{if t.summary.open_issues}
+\textbf{\VAR{L.open_issues}}
+\begin{itemize}
+\BLOCK{for i in t.summary.open_issues}
+\item{}\VAR{i|tex}
+\BLOCK{endfor}
+\end{itemize}
+\BLOCK{endif}
+\BLOCK{else}
+\textcolor{failed}{\VAR{L.no_summary}}\BLOCK{if t.summary_error}: \textcolor{muted}{\VAR{t.summary_error|clip(200)|tex}}\BLOCK{endif}
+
+\BLOCK{if t.final_message}
+\textbf{\VAR{L.agent_reply}}
+\begin{quote}\small
+\VAR{t.final_message|clip(1500)|paragraphs}
+\end{quote}
+\BLOCK{endif}
+\BLOCK{endif}
+
+\BLOCK{if t.files_changed}
+\textbf{\VAR{L.files}}
+\begin{itemize}\small
+\BLOCK{for f in t.files_changed}
+\item \VAR{f|tt}
+\BLOCK{endfor}
+\end{itemize}
+\BLOCK{endif}
+\BLOCK{if t.commands_run}
+\textbf{\VAR{L.commands}}
+\begin{itemize}\small
+\BLOCK{for c in t.commands_run[:max_commands]}
+\item \VAR{c|clip(240)|tt}
+\BLOCK{endfor}
+\BLOCK{if t.commands_run|length > max_commands}
+\item[] \textcolor{muted}{+\VAR{t.commands_run|length - max_commands} \VAR{L.more}}
+\BLOCK{endif}
+\end{itemize}
+\BLOCK{endif}
+\BLOCK{endfor}
+\BLOCK{endif}
+\end{document}

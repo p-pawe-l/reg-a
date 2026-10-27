@@ -1,0 +1,35 @@
+[project]
+name = "agentlog"
+version = "0.1.0"
+description = "Log Claude Code and Codex sessions with local-LLM turn summaries and PDF reports"
+authors = [
+    { name = "Pawel", email = "pawelkozikowski58@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "pydantic>=2.14.1",
+]
+
+[project.scripts]
+agentlog = "agentlog.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.3",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -2,95 +2,122 @@
 
 Logs every Claude Code and Codex session: captures each user prompt and what the agent did, has a local self-hosted LLM summarize each turn, stores one JSON file per session, and renders sessions to a LaTeX/PDF report on demand. No database: the per-session JSON file is the record.
 
-Status: design stage, no code yet. This file holds the agreed architecture; once code exists, the code is the source of truth for schemas and commands, and this file keeps only the reasoning and the gotchas.
+The code is the source of truth for schemas, config keys and commands; this file points at the modules and keeps the reasoning and the gotchas the code can't show. User-facing docs are in `README.md`.
+
+## Status
+
+### Implemented
+
+| Feature | Module |
+|---|---|
+| CLI: `hook`, `sync`, `list`, `convert-to-pdf`, `install`, `init-config` | `src/agentlog/cli.py` |
+| Config (TOML, pydantic, defaults when the file is missing) | `src/agentlog/config.py` |
+| Session schema; `TurnSummary` is the only LLM-produced model | `src/agentlog/models.py` |
+| Claude Code transcript parser (live-branch walk, subagent work) | `src/agentlog/parsers/claude.py` |
+| Codex rollout parser; rollout lookup by session id | `src/agentlog/parsers/codex.py` |
+| Shared parsing helpers: lenient JSONL, timestamps, size-capped excerpt | `src/agentlog/parsers/__init__.py` |
+| LLM summarizer over an OpenAI-compatible chat API | `src/agentlog/summarizer.py` |
+| Idempotent sync: transcript → session JSON | `src/agentlog/sync.py` |
+| Atomic, locked session store | `src/agentlog/store.py` |
+| Hook entry points, detached worker, installers for Claude Code / Codex | `src/agentlog/hooks.py` |
+| LaTeX report (pl and en labels) + PDF build via latexmk/lualatex | `src/agentlog/report.py`, `src/agentlog/templates/report.tex.j2` |
+
+Verification so far: 222 hermetic tests pass (`uv run pytest`), `ruff check` is clean. **Not yet verified:**
+- The PDF build itself. TeX Live isn't installed on the dev machine; the `.tex` output is checked structurally only.
+- A real LLM. Ollama isn't installed; the LLM path was tested against a stub OpenAI-compatible server.
+- Real hooks. Nothing has been installed into the user's `~/.claude/settings.json` or `~/.codex/config.toml` yet.
+
+### To-do (next first)
+
+1. Install TeX Live, run `agentlog convert-to-pdf` on a real session, fix whatever the template breaks on.
+2. Install Ollama + `qwen3:8b`, run `agentlog sync` on a real transcript, check the summaries' quality and language.
+3. Run `agentlog install claude` / `install codex` for real and confirm the actual Codex `notify` payload (key names, see Gotchas); adjust `hooks.codex_rollout_from_notify` and add a fixture.
+4. `agentlog sync --all`: backfill by scanning `~/.claude/projects/**/*.jsonl` and `~/.codex/sessions/**/rollout-*.jsonl`.
+5. Codex turns without a `UserMessage` (agent-triggered) are skipped by `parse_codex_rollout`; decide how to record them.
 
 ## Architecture
 
 ```
-claude-code: UserPromptSubmit hook ──► record prompt + start time
-             Stop hook ───────────────► read this turn's slice of transcript_path
-codex:       notify (turn complete) ──► read this turn's slice of the rollout file
-                     │
-                     ▼
-        collector — the hook spawns a background worker and exits at once
-          1. facts (code):  prompt, session_id, tool, model, timestamps,
-                            work time, files changed, commands run
-          2. summary (LLM): TurnSummary only, forced to its JSON schema,
-                            in the configured language
-          3. pydantic validation → one retry → fallback record on failure
-          4. merge into sessions/<tool>-<session_id>.json
-                     │
-   CLI: agentlog convert-to-pdf <session_id | --all>
-        JSON → Jinja2 → .tex (summary table + per-turn detail) → latexmk → .pdf
+claude-code: Stop + SessionEnd hooks ─┐   stdin JSON carries transcript_path
+codex:       notify (turn complete) ──┤   argv JSON payload → rollout file
+                                      ▼
+  agentlog hook <tool>   (cli.cmd_hook → hooks.py; always exits 0)
+     resolves the transcript, spawns detached
+     `agentlog sync <tool> <transcript> --delay 1 --retry-failed`, exits
+                                      ▼
+  agentlog sync          (sync.sync_session; log → <output_dir>/agentlog.log)
+     1. parse the WHOLE transcript → ParsedSession (facts, by code)
+     2. for each turn that is new, or whose facts changed, then (with
+        --retry-failed) each stored turn with a summary_error:
+        summarize → TurnSummary (LLM)
+     3. under a file lock: merge by turn_id, renumber, atomic write
+        <output_dir>/<tool>-<session_id>.json
+                                      ▼
+  agentlog convert-to-pdf <id | path | --all>   (report.py)
+     JSON → Jinja2 → <output_dir>/reports/<stem>.tex → latexmk -lualatex → .pdf
 ```
 
 ### The facts/summary split
 
-The core rule. **Facts** are everything readable from hook payloads and transcripts; code fills them in. The **summary** is the only part the LLM writes. Keep the LLM's output schema limited to `TurnSummary` so it can never corrupt a prompt, ID, or timestamp.
+The core rule. **Facts** are everything readable from hook payloads and transcripts; code fills them in. The **summary** is the only part the LLM writes. The LLM's output schema is `TurnSummary` alone (`TurnSummary.llm_schema()`, sent as a strict `json_schema` response format), so it can never corrupt a prompt, ID, or timestamp. See `src/agentlog/models.py` for `TurnSummary`, `Turn`, `Session`, and the parser-side `ParsedTurn` / `ParsedSession`.
 
-### Schema (pydantic v2)
+The summarizer (`summarizer.py`) strips `<think>…</think>` blocks and code fences that local models add, validates with pydantic, retries `llm.retries` times, then raises `SummaryError`. `sync` then stores the turn with `summary_error` set (keeping the previous summary, if the turn had one, as stale-but-better-than-nothing): the JSON file is always written.
 
-```python
-class TurnSummary(BaseModel):        # LLM-produced
-    summary: str                     # 2–4 sentences: what the agent did
-    actions: list[str]
-    outcome: Literal["success", "partial", "failed", "question"]
-    open_issues: list[str] = []
+**Circuit breaker:** `SummaryError.unavailable` is true when the server itself failed (connection, timeout, HTTP error). After that, the rest of the sync run skips the LLM and marks remaining turns "not attempted", so a hung server costs each hook worker one timeout, not one per failed turn. A bad reply for one turn (invalid JSON) does not trip it.
 
-class Turn(BaseModel):               # code-produced
-    index: int
-    user_prompt: str
-    started_at: datetime
-    finished_at: datetime
-    work_time_s: float
-    model: str
-    files_changed: list[str]
-    commands_run: list[str]
-    summary: TurnSummary | None      # None → summarizer failed
-    summary_error: str | None = None
+### Why sync re-parses everything
 
-class Session(BaseModel):
-    session_id: UUID
-    tool: Literal["claude-code", "codex"]
-    cwd: str
-    started_at: datetime
-    turns: list[Turn]
-```
+There is no `UserPromptSubmit` hook. Each hook run re-parses the whole transcript and only summarizes what's new, keyed by `turn_id` (Claude: the prompt entry's `uuid`; Codex: the event's `turn_id`). This makes sync idempotent: a missed hook is caught up by the next one, and running it by hand is safe. Stored turns are never deleted, so history survives `/compact` and rewinds.
 
-The JSON file is always written: a turn whose summary fails validation twice is stored with `summary=None` and `summary_error` set.
+A turn can complete more than once: Claude Code resumes a turn under the same prompt when a background task notification arrives. So `sync` compares a stored turn's facts (`finished_at`, `work_time_s`, `interrupted`, files, commands, final message) with the fresh parse and re-summarizes when they differ.
 
-### Config — `~/.config/agentlog/config.toml`
+### Parsers
 
-```toml
-language = "pl"                          # summary language: "pl" | "en"
-output_dir = "~/agentlog/sessions"
+- **Claude Code** (`parsers/claude.py`): the transcript is a tree via `parentUuid`; rewinding or editing a prompt leaves dead branches in the file. The parser walks back from the newest non-sidechain entry to get the live chain, then splits it at human prompts (`origin.kind == "human"` when present; otherwise heuristics that skip tool results, `isMeta`, interrupt markers and `<local-command` output). A turn counts as complete if it has a `turn_duration` system entry, was interrupted, or its last stop reason isn't `tool_use`. Subagent work is read from `<session_id>/subagents/*.jsonl` next to the transcript and credited (files, commands) to the latest turn that started before it, so background subagents still working after their turn's last entry count toward that turn. The title comes from `ai-title` entries.
+- **Codex** (`parsers/codex.py`): turns are delimited by `task_started` and `task_complete` / `turn_aborted` events with a `turn_id`; content comes from `item_completed` events (`UserMessage`, `AgentMessage`, `CommandExecution`, `FileChange`, others into the excerpt). The model comes from `turn_context` / `thread_settings_applied`. Turns with no `UserMessage` are skipped (to-do 5).
 
-[llm]
-base_url = "http://localhost:11434/v1"   # any OpenAI-compatible server (Ollama, llama.cpp, vLLM)
-model = "qwen3:8b"
-max_input_chars = 20000
-timeout_s = 120
-```
+Both feed the summarizer an `Excerpt`: labelled lines, each piece clipped (head + tail kept), the whole capped at `llm.max_input_chars`.
+
+### Config
+
+`src/agentlog/config.py` (`Config`, `LLMConfig`; `extra="forbid"`, so typos fail loudly). Path: `$AGENTLOG_CONFIG`, else `~/.config/agentlog/config.toml`; a missing file means all defaults. `agentlog init-config` writes `EXAMPLE_CONFIG`. Note the code default `language = "en"` while the example sets `"pl"`. `codex_home` defaults to `$CODEX_HOME` or `~/.codex`.
+
+### Report
+
+`report.py` + `templates/report.tex.j2`: Jinja2 with `\BLOCK{}`, `\VAR{}`, `\#{}` delimiters so LaTeX braces don't clash. Overview table, a turn summary longtable, then per-turn detail (prompt, summary/actions/open issues, or the agent's final message when the summary is missing; files; up to 10 commands). Labels in `LABELS` exist for `pl` and `en`; other languages fall back to English labels with the matching babel language from `BABEL_LANGUAGES`.
 
 ## Session identity
 
-Key everything by `(tool, session_id)`.
+Key everything by `(tool, session_id)`; the file is `<output_dir>/<tool>-<session_id>.json` (`store.session_path`).
 
-- **Claude Code**: every hook payload carries `session_id` and `transcript_path` (`~/.claude/projects/<cwd with / → ->/<uuid>.jsonl`). `--continue`/`--resume` keep the ID, so turns append to the existing file; `--fork-session` and `/clear` start a new ID. `SessionStart.source` (`startup|resume|clear|compact`) tells them apart.
-- **Codex**: ID is the UUIDv7 in `~/.codex/sessions/YYYY/MM/DD/rollout-<timestamp>-<uuid>.jsonl`; `codex resume` keeps it. Turn completion arrives via `notify = [...]` in `~/.codex/config.toml`.
+- **Claude Code**: every hook payload carries `session_id` and `transcript_path` (`~/.claude/projects/<cwd with / → ->/<uuid>.jsonl`). `--continue`/`--resume` keep the ID, so turns append to the existing file; `--fork-session` and `/clear` start a new ID.
+- **Codex**: ID is the UUIDv7 in `~/.codex/sessions/YYYY/MM/DD/rollout-<timestamp>-<uuid>.jsonl` (or `session_meta.payload.id`); `codex resume` keeps it. Turn completion arrives via `notify = [...]` in `~/.codex/config.toml`, which `agentlog install codex` sets.
+
+## Commands
+
+```sh
+uv sync                                   # dev environment
+uv run pytest                             # all tests (hermetic: no LLM, no TeX, no real ~)
+uv run ruff check                         # lint
+uv run agentlog --help                    # CLI; each subcommand has --help
+uv tool install -e .                      # put `agentlog` on PATH (needed before `install`)
+agentlog sync claude <transcript.jsonl>   # run a sync by hand (foreground)
+agentlog convert-to-pdf <id> --tex-only   # render .tex without TeX Live
+```
+
+Python ≥ 3.14, dependencies: httpx, jinja2, pydantic. Runtime prerequisites (not installed on the dev machine yet): Ollama (`ollama pull qwen3:8b`) and TeX Live (Arch: `texlive-basic texlive-latexextra texlive-langextra texlive-binextra texlive-fontsrecommended`).
 
 ## Gotchas
 
-- **Hooks must return fast.** Summarizing takes seconds; the hook detaches a worker and exits, so the agent never waits.
-- **Transcript formats are unversioned.** Both JSONL formats change between releases: parse leniently, skip unknown entry types, and keep fixture transcripts from real sessions in `tests/fixtures/`.
-- **Truncate before summarizing.** Tool outputs and diffs can be huge; cap each at `max_input_chars` before sending to a small model.
-- **Concurrent writes.** Two turns can finish together: write the session file atomically (temp file + rename) under a file lock.
-- **LaTeX.** Escape `_ % & # $ { } ~ ^ \` in every user- or model-provided string. Build with `lualatex` + `fontspec` + `babel` so Polish characters render.
+- **Hooks must return fast and never fail.** `cmd_hook` loads config inside its own try/except and always exits 0; a broken hook must not disturb the agent. The worker is detached (`start_new_session`) and waits `--delay 1` so the agent finishes flushing the transcript. Worker output goes to `<output_dir>/agentlog.log`; look there first when nothing is recorded.
+- **Installers embed an absolute path.** `hooks.agentlog_command()` resolves `agentlog` via `shutil.which` at install time (fallback: `python -m agentlog`). Run `install` from the `uv tool install -e .` binary, not `uv run`, or the hook points into `.venv`. `install codex` refuses to overwrite an existing different `notify`; both installers back up the file (`.bak`) before writing.
+- **Codex notify payload keys are inferred, not confirmed.** `codex_rollout_from_notify` tries `thread-id`, `thread_id`, `session-id`, `session_id`, ignores non-`agent-turn-complete` types, and falls back to the newest rollout file. Confirm against a real run (to-do 3).
+- **Transcript formats are unversioned.** Both JSONL formats change between releases: parse leniently, skip unknown entry types and undecodable lines (a partially flushed last line is normal), and keep fixture transcripts in `tests/fixtures/`.
+- **Truncate before summarizing.** Tool outputs and diffs can be huge; `Excerpt` clips each piece and the whole to `max_input_chars`.
+- **Concurrent writes.** Two hooks can fire together: `sync` holds `store.session_lock` (flock on a `.lock` file beside the JSON) across read-modify-write, and `save_session` writes temp file + `os.replace`. It saves after every turn, so a long backfill keeps its progress.
+- **Corrupt session JSON** is renamed `*.corrupt-<timestamp>` and the session rebuilt from the transcript (summaries are regenerated).
+- **LaTeX.** Every session value in the template must go through the `tex`, `tt` or `paragraphs` filter. `tex()` escapes `\ { } $ & # % _ ~ ^`, drops control characters, and breaks ligatures (`--` → en dash, `` ` ``, `''`, `<<`, `>>`, `!``, `?``) with `{}`. Use `\item{}` and `\newline{}` (not `\\`) before user text so a leading `[` or `*` isn't read as an argument. Build with `lualatex` + `fontspec` + `babel` with `shorthands=off` (Polish babel shorthands break on `"`); Latin Modern fonts come from `texlive-fontsrecommended`.
 - **Secrets.** Prompts and tool output can contain keys or `.env` contents; output stays local, and fixtures are scrubbed before committing.
-
-## Toolchain
-
-Python with `uv`; package under `src/agentlog/`, tests under `tests/` (pytest). Runtime prerequisites not yet installed on the dev machine: Ollama (`ollama pull qwen3:8b`) and TeX Live (`texlive-basic texlive-latexextra texlive-langextra texlive-binextra`). Record real commands here once `pyproject.toml` exists.
 
 ## Subagents and workflow
 
@@ -111,7 +138,7 @@ Every time you implement a part of the system, run this loop:
 5. Commit (rules below).
 
 How to run them:
-- **Claude Code**: launch through the Agent tool with `subagent_type` set to the agent's name.
+- **Claude Code**: launch through the Agent tool with `subagent_type` set to the agent's name. Agents in `.claude/agents/` only register after Claude Code restarts; until then, launch a `general-purpose` agent and give it the role file's body as its instructions.
 - **Codex** (or any agent without `.claude/agents` support): read the agent's file and either hand its body to a subagent as instructions, or perform the role yourself, following its steps and output format exactly.
 
 ## Commits
