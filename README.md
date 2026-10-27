@@ -4,8 +4,6 @@ reg-a keeps a log of your Claude Code and Codex sessions. After every turn it re
 
 Everything stays on your machine. The summaries come from a model you host yourself (Ollama, llama.cpp, vLLM or another OpenAI-compatible server).
 
-> Status: early. The tests pass, but the PDF build and real-LLM summaries haven't been checked end to end yet.
-
 ## Prerequisites
 
 - **Python 3.14+** and [**uv**](https://docs.astral.sh/uv/).
