@@ -59,8 +59,10 @@ def cmd_list(args, cfg) -> int:
             print(f"{path.name}: unreadable session file", file=sys.stderr)
             continue
         if s:
-            print(f"{s.started_at:%Y-%m-%d %H:%M}  {s.tool:<11}  {s.session_id}  "
-                  f"{len(s.turns):>3} turns  {s.title or s.cwd or ''}")
+            print(
+                f"{s.started_at:%Y-%m-%d %H:%M}  {s.tool:<11}  {s.session_id}  "
+                f"{len(s.turns):>3} turns  {s.title or s.cwd or ''}"
+            )
     return 0
 
 
@@ -69,8 +71,11 @@ def resolve_session(ref: str, output_dir: Path) -> Path:
     path = Path(ref).expanduser()
     if path.is_file():
         return path
-    matches = [p for p in list_sessions(output_dir)
-               if p.stem.removeprefix("claude-code-").removeprefix("codex-").startswith(ref)]
+    matches = [
+        p
+        for p in list_sessions(output_dir)
+        if p.stem.removeprefix("claude-code-").removeprefix("codex-").startswith(ref)
+    ]
     if len(matches) != 1:
         found = "no session" if not matches else f"{len(matches)} sessions"
         raise SystemExit(f"{found} matching {ref!r} in {output_dir}")
@@ -97,8 +102,9 @@ def cmd_convert(args, cfg) -> int:
 
 def cmd_install(args, cfg) -> int:
     if args.tool == "claude-code":
-        settings = (Path(".claude/settings.json") if args.project
-                    else cfg.claude_home / "settings.json")
+        settings = (
+            Path(".claude/settings.json") if args.project else cfg.claude_home / "settings.json"
+        )
         print(hooks.install_claude(settings))
     else:
         print(hooks.install_codex(cfg.codex_home / "config.toml"))
@@ -118,8 +124,12 @@ def cmd_init_config(args, cfg) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="agentlog", description=__doc__)
-    p.add_argument("--config", type=Path, default=None,
-                   help="config file (default: $AGENTLOG_CONFIG or ~/.config/agentlog/config.toml)")
+    p.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="config file (default: $AGENTLOG_CONFIG or ~/.config/agentlog/config.toml)",
+    )
     sub = p.add_subparsers(dest="command", required=True)
 
     s = sub.add_parser("hook", help="hook entry point called by Claude Code / Codex")
@@ -131,8 +141,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("tool", type=_tool)
     s.add_argument("transcript", type=Path)
     s.add_argument("--delay", type=float, default=0, help="seconds to wait before parsing")
-    s.add_argument("--retry-failed", action="store_true",
-                   help="also re-summarize stored turns whose summary failed")
+    s.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="also re-summarize stored turns whose summary failed",
+    )
     s.set_defaults(func=cmd_sync)
 
     s = sub.add_parser("list", help="list recorded sessions")
@@ -147,8 +160,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("install", help="register agentlog hooks with Claude Code or Codex")
     s.add_argument("tool", type=_tool)
-    s.add_argument("--project", action="store_true",
-                   help="Claude Code: write ./.claude/settings.json instead of the user settings")
+    s.add_argument(
+        "--project",
+        action="store_true",
+        help="Claude Code: write ./.claude/settings.json instead of the user settings",
+    )
     s.set_defaults(func=cmd_install)
 
     s = sub.add_parser("init-config", help="write an example config file")

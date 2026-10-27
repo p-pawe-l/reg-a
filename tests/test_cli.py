@@ -56,20 +56,20 @@ def test_unknown_tool_is_a_usage_error(capsys):
     assert "tool must be" in capsys.readouterr().err
 
 
-def test_claude_hook_spawns_sync_for_existing_transcript(tmp_path, cfg_file, spawned,
-                                                         monkeypatch):
+def test_claude_hook_spawns_sync_for_existing_transcript(tmp_path, cfg_file, spawned, monkeypatch):
     transcript = tmp_path / "s.jsonl"
     transcript.write_text("{}\n")
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps({"transcript_path": str(transcript)})))
     assert cli.main(["--config", str(cfg_file), "hook", "claude"]) == 0
-    (tool, path, cfg, config_path), = spawned
+    ((tool, path, cfg, config_path),) = spawned
     assert (tool, path, config_path) == ("claude-code", transcript, cfg_file)
     assert cfg.output_dir == tmp_path / "sessions"
 
 
 def test_claude_hook_with_missing_transcript_does_not_spawn(tmp_path, spawned, monkeypatch):
-    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(
-        {"transcript_path": str(tmp_path / "absent.jsonl")})))
+    monkeypatch.setattr(
+        "sys.stdin", io.StringIO(json.dumps({"transcript_path": str(tmp_path / "absent.jsonl")}))
+    )
     assert cli.main(["hook", "claude"]) == 0
     assert spawned == []
 
@@ -102,8 +102,9 @@ def test_codex_hook_resolves_rollout_from_notify_payload(tmp_path, cfg_file, spa
     assert spawned[0][:2] == ("codex", rollout)
 
 
-def test_sync_command_writes_session_and_prints_summary(cfg_file, fake_summarizer, capsys,
-                                                        tmp_path):
+def test_sync_command_writes_session_and_prints_summary(
+    cfg_file, fake_summarizer, capsys, tmp_path
+):
     assert cli.main(["--config", str(cfg_file), "sync", "codex", str(CODEX_FIXTURE)]) == 0
     out_path = tmp_path / "sessions" / f"codex-{CODEX_SESSION_ID}.json"
     assert f"{out_path}  (2 turns, 0 without summary)" in capsys.readouterr().out

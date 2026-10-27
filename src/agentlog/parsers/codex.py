@@ -108,25 +108,35 @@ def parse_codex_rollout(path: Path, max_chars: int = 20_000) -> ParsedSession:
             duration_ms = p.get("duration_ms")
             if ptype == "task_complete" and p.get("last_agent_message"):
                 turn.final_message = p["last_agent_message"]
-            turns.append(ParsedTurn(
-                turn_id=turn.turn_id,
-                user_prompt="\n".join(turn.prompt_parts),
-                started_at=turn.started_at,
-                finished_at=finished,
-                work_time_s=duration_ms / 1000 if duration_ms
-                else (finished - turn.started_at).total_seconds(),
-                model=turn.models.most_common(1)[0][0] if turn.models else model,
-                interrupted=ptype == "turn_aborted",
-                files_changed=turn.files,
-                commands_run=turn.commands,
-                final_message=turn.final_message,
-                transcript_excerpt=turn.excerpt.render(max_chars),
-            ))
+            turns.append(
+                ParsedTurn(
+                    turn_id=turn.turn_id,
+                    user_prompt="\n".join(turn.prompt_parts),
+                    started_at=turn.started_at,
+                    finished_at=finished,
+                    work_time_s=duration_ms / 1000
+                    if duration_ms
+                    else (finished - turn.started_at).total_seconds(),
+                    model=turn.models.most_common(1)[0][0] if turn.models else model,
+                    interrupted=ptype == "turn_aborted",
+                    files_changed=turn.files,
+                    commands_run=turn.commands,
+                    final_message=turn.final_message,
+                    transcript_excerpt=turn.excerpt.render(max_chars),
+                )
+            )
 
     if session_started is None:
         raise EmptyTranscriptError(f"no timestamps in {path}")
-    return ParsedSession(session_id=session_id, tool="codex", title=None, cwd=cwd,
-                         started_at=session_started, transcript_path=str(path), turns=turns)
+    return ParsedSession(
+        session_id=session_id,
+        tool="codex",
+        title=None,
+        cwd=cwd,
+        started_at=session_started,
+        transcript_path=str(path),
+        turns=turns,
+    )
 
 
 def find_rollout(codex_home: Path, session_id: str | None) -> Path | None:

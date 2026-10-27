@@ -11,10 +11,21 @@ from agentlog.store import list_sessions, load_session, save_session, session_lo
 
 def make_session(sid="s1", n_turns=1) -> Session:
     t0 = datetime(2026, 1, 2, tzinfo=UTC)
-    turns = [Turn(turn_id=f"t{i}", index=i, user_prompt=f"p{i}", started_at=t0, finished_at=t0,
-                  work_time_s=1.5, model=None) for i in range(1, n_turns + 1)]
-    return Session(session_id=sid, tool="codex", started_at=t0, transcript_path="/x.jsonl",
-                   turns=turns)
+    turns = [
+        Turn(
+            turn_id=f"t{i}",
+            index=i,
+            user_prompt=f"p{i}",
+            started_at=t0,
+            finished_at=t0,
+            work_time_s=1.5,
+            model=None,
+        )
+        for i in range(1, n_turns + 1)
+    ]
+    return Session(
+        session_id=sid, tool="codex", started_at=t0, transcript_path="/x.jsonl", turns=turns
+    )
 
 
 def test_session_path_is_tool_dash_id_json(tmp_path):

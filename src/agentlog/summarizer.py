@@ -14,8 +14,14 @@ from pydantic import ValidationError
 from agentlog.config import LLMConfig
 from agentlog.models import ParsedTurn, TurnSummary
 
-LANGUAGE_NAMES = {"pl": "Polish", "en": "English", "de": "German", "fr": "French",
-                  "es": "Spanish", "uk": "Ukrainian"}
+LANGUAGE_NAMES = {
+    "pl": "Polish",
+    "en": "English",
+    "de": "German",
+    "fr": "French",
+    "es": "Spanish",
+    "uk": "Ukrainian",
+}
 
 SYSTEM_PROMPT = """\
 You summarize one turn of a session between a user and an AI coding agent \
@@ -40,10 +46,14 @@ def language_name(code: str) -> str:
 def build_messages(turn: ParsedTurn, tool: str, language: str) -> list[dict]:
     schema = json.dumps(TurnSummary.llm_schema())
     return [
-        {"role": "system",
-         "content": SYSTEM_PROMPT.format(tool=tool, language=language_name(language))},
-        {"role": "user",
-         "content": f"JSON schema:\n{schema}\n\nTurn log:\n{turn.transcript_excerpt}"},
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT.format(tool=tool, language=language_name(language)),
+        },
+        {
+            "role": "user",
+            "content": f"JSON schema:\n{schema}\n\nTurn log:\n{turn.transcript_excerpt}",
+        },
     ]
 
 
@@ -56,7 +66,7 @@ def _extract_json(text: str) -> str:
         text = text.split("\n", 1)[1] if "\n" in text else ""
         text = text.rsplit("```", 1)[0]
     start, end = text.find("{"), text.rfind("}")
-    return text[start:end + 1] if start != -1 and end > start else text
+    return text[start : end + 1] if start != -1 and end > start else text
 
 
 class Summarizer:
@@ -71,16 +81,22 @@ class Summarizer:
         )
 
     def _request(self, messages: list[dict]) -> str:
-        resp = self.client.post("/chat/completions", json={
-            "model": self.cfg.model,
-            "messages": messages,
-            "temperature": self.cfg.temperature,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {"name": "turn_summary", "strict": True,
-                                "schema": TurnSummary.llm_schema()},
+        resp = self.client.post(
+            "/chat/completions",
+            json={
+                "model": self.cfg.model,
+                "messages": messages,
+                "temperature": self.cfg.temperature,
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "turn_summary",
+                        "strict": True,
+                        "schema": TurnSummary.llm_schema(),
+                    },
+                },
             },
-        })
+        )
         resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"] or ""
 

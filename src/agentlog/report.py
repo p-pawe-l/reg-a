@@ -15,8 +15,16 @@ from jinja2 import Environment, PackageLoader, StrictUndefined
 from agentlog.models import Session
 
 TEX_SPECIALS = {
-    "\\": r"\textbackslash{}", "{": r"\{", "}": r"\}", "$": r"\$", "&": r"\&", "#": r"\#",
-    "%": r"\%", "_": r"\_", "~": r"\textasciitilde{}", "^": r"\textasciicircum{}",
+    "\\": r"\textbackslash{}",
+    "{": r"\{",
+    "}": r"\}",
+    "$": r"\$",
+    "&": r"\&",
+    "#": r"\#",
+    "%": r"\%",
+    "_": r"\_",
+    "~": r"\textasciitilde{}",
+    "^": r"\textasciicircum{}",
 }
 _SPECIALS_RE = re.compile(r"[\\{}$&#%_~^]")
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -25,33 +33,80 @@ _BREAK_AFTER_RE = re.compile(r"(/|\\_|\.|-|=|,)")
 
 LABELS = {
     "en": {
-        "report": "Session report", "tool": "Tool", "session": "Session", "directory": "Directory",
-        "started": "Started", "turns": "Turns", "work_time": "Total work time",
-        "models": "Models", "overview": "Overview", "time": "Time", "duration": "Duration",
-        "outcome": "Outcome", "prompt": "Prompt", "details": "Turns in detail", "turn": "Turn",
-        "summary": "Summary", "actions": "Actions", "files": "Files changed",
-        "commands": "Commands run", "open_issues": "Open issues", "interrupted": "interrupted",
-        "no_summary": "No summary available", "agent_reply": "Agent's final message",
-        "more": "more", "none": "none",
-        "outcomes": {"success": "success", "partial": "partial", "failed": "failed",
-                     "question": "question"},
+        "report": "Session report",
+        "tool": "Tool",
+        "session": "Session",
+        "directory": "Directory",
+        "started": "Started",
+        "turns": "Turns",
+        "work_time": "Total work time",
+        "models": "Models",
+        "overview": "Overview",
+        "time": "Time",
+        "duration": "Duration",
+        "outcome": "Outcome",
+        "prompt": "Prompt",
+        "details": "Turns in detail",
+        "turn": "Turn",
+        "summary": "Summary",
+        "actions": "Actions",
+        "files": "Files changed",
+        "commands": "Commands run",
+        "open_issues": "Open issues",
+        "interrupted": "interrupted",
+        "no_summary": "No summary available",
+        "agent_reply": "Agent's final message",
+        "more": "more",
+        "none": "none",
+        "outcomes": {
+            "success": "success",
+            "partial": "partial",
+            "failed": "failed",
+            "question": "question",
+        },
     },
     "pl": {
-        "report": "Raport sesji", "tool": "Narzędzie", "session": "Sesja",
-        "directory": "Katalog", "started": "Rozpoczęto", "turns": "Tury",
-        "work_time": "Łączny czas pracy", "models": "Modele", "overview": "Przegląd",
-        "time": "Godzina", "duration": "Czas", "outcome": "Wynik", "prompt": "Polecenie",
-        "details": "Szczegóły tur", "turn": "Tura", "summary": "Podsumowanie",
-        "actions": "Działania", "files": "Zmienione pliki", "commands": "Wykonane polecenia",
-        "open_issues": "Otwarte kwestie", "interrupted": "przerwano",
-        "no_summary": "Brak podsumowania", "agent_reply": "Ostatnia odpowiedź agenta",
-        "more": "więcej", "none": "brak",
-        "outcomes": {"success": "sukces", "partial": "częściowo", "failed": "porażka",
-                     "question": "pytanie"},
+        "report": "Raport sesji",
+        "tool": "Narzędzie",
+        "session": "Sesja",
+        "directory": "Katalog",
+        "started": "Rozpoczęto",
+        "turns": "Tury",
+        "work_time": "Łączny czas pracy",
+        "models": "Modele",
+        "overview": "Przegląd",
+        "time": "Godzina",
+        "duration": "Czas",
+        "outcome": "Wynik",
+        "prompt": "Polecenie",
+        "details": "Szczegóły tur",
+        "turn": "Tura",
+        "summary": "Podsumowanie",
+        "actions": "Działania",
+        "files": "Zmienione pliki",
+        "commands": "Wykonane polecenia",
+        "open_issues": "Otwarte kwestie",
+        "interrupted": "przerwano",
+        "no_summary": "Brak podsumowania",
+        "agent_reply": "Ostatnia odpowiedź agenta",
+        "more": "więcej",
+        "none": "brak",
+        "outcomes": {
+            "success": "sukces",
+            "partial": "częściowo",
+            "failed": "porażka",
+            "question": "pytanie",
+        },
     },
 }
-BABEL_LANGUAGES = {"pl": "polish", "en": "english", "de": "ngerman", "fr": "french",
-                   "es": "spanish", "uk": "ukrainian"}
+BABEL_LANGUAGES = {
+    "pl": "polish",
+    "en": "english",
+    "de": "ngerman",
+    "fr": "french",
+    "es": "spanish",
+    "uk": "ukrainian",
+}
 
 
 def tex(value: object) -> str:
@@ -95,23 +150,36 @@ def paragraphs(value: str) -> str:
 def _env() -> Environment:
     env = Environment(
         loader=PackageLoader("agentlog", "templates"),
-        block_start_string=r"\BLOCK{", block_end_string="}",
-        variable_start_string=r"\VAR{", variable_end_string="}",
-        comment_start_string=r"\#{", comment_end_string="}",
-        trim_blocks=True, lstrip_blocks=True, autoescape=False, undefined=StrictUndefined,
+        block_start_string=r"\BLOCK{",
+        block_end_string="}",
+        variable_start_string=r"\VAR{",
+        variable_end_string="}",
+        comment_start_string=r"\#{",
+        comment_end_string="}",
+        trim_blocks=True,
+        lstrip_blocks=True,
+        autoescape=False,
+        undefined=StrictUndefined,
     )
-    env.filters.update(tex=tex, tt=tt, clip=clip, duration=duration, localtime=localtime,
-                       paragraphs=paragraphs)
+    env.filters.update(
+        tex=tex, tt=tt, clip=clip, duration=duration, localtime=localtime, paragraphs=paragraphs
+    )
     return env
 
 
 def render_tex(session: Session, language: str) -> str:
     lang = language.lower()
     models = sorted({t.model for t in session.turns if t.model})
-    return _env().get_template("report.tex.j2").render(
-        s=session, L=LABELS.get(lang, LABELS["en"]),
-        babel=BABEL_LANGUAGES.get(lang, "english"), models=models,
-        max_commands=10,
+    return (
+        _env()
+        .get_template("report.tex.j2")
+        .render(
+            s=session,
+            L=LABELS.get(lang, LABELS["en"]),
+            babel=BABEL_LANGUAGES.get(lang, "english"),
+            models=models,
+            max_commands=10,
+        )
     )
 
 
@@ -130,9 +198,16 @@ def build_pdf(tex_path: Path) -> Path:
         )
     outdir = tex_path.parent
     proc = subprocess.run(
-        [latexmk, "-lualatex", "-interaction=nonstopmode", "-halt-on-error",
-         f"-outdir={outdir}", str(tex_path)],
-        capture_output=True, text=True,
+        [
+            latexmk,
+            "-lualatex",
+            "-interaction=nonstopmode",
+            "-halt-on-error",
+            f"-outdir={outdir}",
+            str(tex_path),
+        ],
+        capture_output=True,
+        text=True,
     )
     if proc.returncode != 0:
         log = tex_path.with_suffix(".log")

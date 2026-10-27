@@ -130,24 +130,38 @@ def test_turn_without_agent_reply_still_records_prompt(tmp_path):
 
 
 def test_multiple_user_messages_are_joined(tmp_path):
-    s = parse(tmp_path, [started("t1", 0), user("t1", 1, "part one"), user("t1", 2, "part two"),
-                         complete("t1", 3)])
+    s = parse(
+        tmp_path,
+        [started("t1", 0), user("t1", 1, "part one"), user("t1", 2, "part two"), complete("t1", 3)],
+    )
     assert s.turns[0].user_prompt == "part one\npart two"
 
 
 def test_final_answer_phase_beats_commentary(tmp_path):
-    s = parse(tmp_path, [started("t1", 0), user("t1", 1, "q"),
-                         agent("t1", 2, "thinking aloud", "commentary"),
-                         agent("t1", 3, "the answer", "final_answer"),
-                         agent("t1", 4, "late commentary", "commentary"),
-                         ev(5, {"type": "turn_aborted", "turn_id": "t1"})])
+    s = parse(
+        tmp_path,
+        [
+            started("t1", 0),
+            user("t1", 1, "q"),
+            agent("t1", 2, "thinking aloud", "commentary"),
+            agent("t1", 3, "the answer", "final_answer"),
+            agent("t1", 4, "late commentary", "commentary"),
+            ev(5, {"type": "turn_aborted", "turn_id": "t1"}),
+        ],
+    )
     assert s.turns[0].final_message == "the answer"
 
 
 def test_item_for_unknown_turn_is_ignored(tmp_path):
-    s = parse(tmp_path, [started("t1", 0), user("t1", 1, "q"),
-                         item("ghost", 2, type="CommandExecution", command="rm -rf /tmp/x"),
-                         complete("t1", 3)])
+    s = parse(
+        tmp_path,
+        [
+            started("t1", 0),
+            user("t1", 1, "q"),
+            item("ghost", 2, type="CommandExecution", command="rm -rf /tmp/x"),
+            complete("t1", 3),
+        ],
+    )
     assert s.turns[0].commands_run == []
 
 
@@ -157,12 +171,17 @@ def test_completion_for_unknown_turn_is_ignored(tmp_path):
 
 
 def test_string_command_and_repeated_file_change_are_handled(tmp_path):
-    s = parse(tmp_path, [started("t1", 0), user("t1", 1, "q"),
-                         item("t1", 2, type="CommandExecution", command="ls -la"),
-                         item("t1", 3, type="FileChange", changes={"/w/a": {"type": "update"}}),
-                         item("t1", 4, type="FileChange", changes={"/w/a": {"type": "update"},
-                                                                   "/w/b": "weird"}),
-                         complete("t1", 5)])
+    s = parse(
+        tmp_path,
+        [
+            started("t1", 0),
+            user("t1", 1, "q"),
+            item("t1", 2, type="CommandExecution", command="ls -la"),
+            item("t1", 3, type="FileChange", changes={"/w/a": {"type": "update"}}),
+            item("t1", 4, type="FileChange", changes={"/w/a": {"type": "update"}, "/w/b": "weird"}),
+            complete("t1", 5),
+        ],
+    )
     t = s.turns[0]
     assert t.commands_run == ["ls -la"]
     assert t.files_changed == ["/w/a", "/w/b"]
@@ -170,24 +189,43 @@ def test_string_command_and_repeated_file_change_are_handled(tmp_path):
 
 
 def test_model_from_thread_settings_applied(tmp_path):
-    s = parse(tmp_path, [ev(0, {"type": "thread_settings_applied",
-                                "thread_settings": {"model": "gpt-settings"}}),
-                         started("t1", 1), user("t1", 2, "q"), complete("t1", 3)])
+    s = parse(
+        tmp_path,
+        [
+            ev(
+                0, {"type": "thread_settings_applied", "thread_settings": {"model": "gpt-settings"}}
+            ),
+            started("t1", 1),
+            user("t1", 2, "q"),
+            complete("t1", 3),
+        ],
+    )
     assert s.turns[0].model == "gpt-settings"
 
 
 def test_task_started_without_started_at_uses_event_timestamp(tmp_path):
-    s = parse(tmp_path, [ev(4, {"type": "task_started", "turn_id": "t1"}), user("t1", 5, "q"),
-                         complete("t1", 9)])
+    s = parse(
+        tmp_path,
+        [ev(4, {"type": "task_started", "turn_id": "t1"}), user("t1", 5, "q"), complete("t1", 9)],
+    )
     assert s.turns[0].started_at == datetime(2026, 1, 2, 10, 0, 4, tzinfo=UTC)
     assert s.turns[0].work_time_s == 5.0
 
 
 def test_excerpt_is_capped_at_max_chars(tmp_path):
-    items = [item("t1", 2, type="CommandExecution", command=["bash", "-lc", f"echo {i}"],
-                  aggregated_output="o" * 1000) for i in range(100)]
-    s = parse(tmp_path, [started("t1", 0), user("t1", 1, "q"), *items, complete("t1", 3)],
-              max_chars=1500)
+    items = [
+        item(
+            "t1",
+            2,
+            type="CommandExecution",
+            command=["bash", "-lc", f"echo {i}"],
+            aggregated_output="o" * 1000,
+        )
+        for i in range(100)
+    ]
+    s = parse(
+        tmp_path, [started("t1", 0), user("t1", 1, "q"), *items, complete("t1", 3)], max_chars=1500
+    )
     assert len(s.turns[0].transcript_excerpt) < 1600
     assert len(s.turns[0].commands_run) == 100
 

@@ -13,8 +13,16 @@ def ts(sec: int) -> str:
 
 
 def prompt(uuid, parent, sec, text="Do something", human=True, **extra):
-    e = {"type": "user", "uuid": uuid, "parentUuid": parent, "sessionId": SID, "cwd": "/work/x",
-         "timestamp": ts(sec), "message": {"role": "user", "content": text}, **extra}
+    e = {
+        "type": "user",
+        "uuid": uuid,
+        "parentUuid": parent,
+        "sessionId": SID,
+        "cwd": "/work/x",
+        "timestamp": ts(sec),
+        "message": {"role": "user", "content": text},
+        **extra,
+    }
     if human:
         e["origin"] = {"kind": "human"}
     return e
@@ -22,24 +30,45 @@ def prompt(uuid, parent, sec, text="Do something", human=True, **extra):
 
 def assistant(uuid, parent, sec, text=None, stop="end_turn", model="claude-test", tools=()):
     content = [{"type": "text", "text": text}] if text else []
-    content += [{"type": "tool_use", "id": f"tu-{uuid}-{i}", "name": n, "input": inp}
-                for i, (n, inp) in enumerate(tools)]
-    return {"type": "assistant", "uuid": uuid, "parentUuid": parent, "sessionId": SID,
-            "timestamp": ts(sec),
-            "message": {"role": "assistant", "model": model, "stop_reason": stop,
-                        "content": content}}
+    content += [
+        {"type": "tool_use", "id": f"tu-{uuid}-{i}", "name": n, "input": inp}
+        for i, (n, inp) in enumerate(tools)
+    ]
+    return {
+        "type": "assistant",
+        "uuid": uuid,
+        "parentUuid": parent,
+        "sessionId": SID,
+        "timestamp": ts(sec),
+        "message": {"role": "assistant", "model": model, "stop_reason": stop, "content": content},
+    }
 
 
 def tool_result(uuid, parent, sec, text="ok"):
-    return {"type": "user", "uuid": uuid, "parentUuid": parent, "sessionId": SID,
-            "timestamp": ts(sec),
-            "message": {"role": "user",
-                        "content": [{"type": "tool_result", "tool_use_id": "x", "content": text}]}}
+    return {
+        "type": "user",
+        "uuid": uuid,
+        "parentUuid": parent,
+        "sessionId": SID,
+        "timestamp": ts(sec),
+        "message": {
+            "role": "user",
+            "content": [{"type": "tool_result", "tool_use_id": "x", "content": text}],
+        },
+    }
 
 
 def duration(uuid, parent, sec, ms):
-    return {"type": "system", "subtype": "turn_duration", "uuid": uuid, "parentUuid": parent,
-            "sessionId": SID, "timestamp": ts(sec), "durationMs": ms, "isMeta": True}
+    return {
+        "type": "system",
+        "subtype": "turn_duration",
+        "uuid": uuid,
+        "parentUuid": parent,
+        "sessionId": SID,
+        "timestamp": ts(sec),
+        "durationMs": ms,
+        "isMeta": True,
+    }
 
 
 def parse(tmp_path, entries, **kw):
@@ -129,8 +158,13 @@ def test_empty_transcript_raises_value_error(tmp_path):
 
 
 def test_transcript_with_only_unknown_entries_and_a_timestamp_has_no_turns(tmp_path):
-    s = parse(tmp_path, [{"type": "mode", "sessionId": SID},
-                         {"type": "api-request", "timestamp": ts(3), "sessionId": SID}])
+    s = parse(
+        tmp_path,
+        [
+            {"type": "mode", "sessionId": SID},
+            {"type": "api-request", "timestamp": ts(3), "sessionId": SID},
+        ],
+    )
     assert s.turns == []
     assert s.started_at == datetime(2026, 1, 2, 10, 0, 3, tzinfo=UTC)
     assert s.session_id == SID
@@ -145,16 +179,26 @@ def test_session_id_falls_back_to_file_stem(tmp_path):
 
 
 def test_prompt_without_assistant_reply_is_not_a_turn_yet(tmp_path):
-    s = parse(tmp_path, [prompt("p1", None, 0, "first"), assistant("a1", "p1", 2, "done"),
-                         prompt("p2", "a1", 5, "second")])
+    s = parse(
+        tmp_path,
+        [
+            prompt("p1", None, 0, "first"),
+            assistant("a1", "p1", 2, "done"),
+            prompt("p2", "a1", 5, "second"),
+        ],
+    )
     assert [t.turn_id for t in s.turns] == ["p1"]
 
 
 def test_turn_still_running_tool_use_is_not_a_turn_yet(tmp_path):
-    s = parse(tmp_path, [prompt("p1", None, 0),
-                         assistant("a1", "p1", 2, stop="tool_use",
-                                   tools=[("Bash", {"command": "make"})]),
-                         tool_result("r1", "a1", 3)])
+    s = parse(
+        tmp_path,
+        [
+            prompt("p1", None, 0),
+            assistant("a1", "p1", 2, stop="tool_use", tools=[("Bash", {"command": "make"})]),
+            tool_result("r1", "a1", 3),
+        ],
+    )
     assert s.turns == []
 
 
@@ -170,19 +214,30 @@ def test_any_non_tool_stop_reason_completes_the_turn(tmp_path):
 
 
 def test_turn_duration_alone_completes_a_turn_ending_in_tool_use(tmp_path):
-    s = parse(tmp_path, [prompt("p1", None, 0), assistant("a1", "p1", 1, stop="tool_use"),
-                         duration("d1", "a1", 2, 1500)])
+    s = parse(
+        tmp_path,
+        [
+            prompt("p1", None, 0),
+            assistant("a1", "p1", 1, stop="tool_use"),
+            duration("d1", "a1", 2, 1500),
+        ],
+    )
     assert len(s.turns) == 1
     assert s.turns[0].work_time_s == 1.5
 
 
 def test_interrupt_with_plain_string_content_marks_turn_interrupted(tmp_path):
-    interrupt = {"type": "user", "uuid": "i1", "parentUuid": "a1", "sessionId": SID,
-                 "timestamp": ts(4),
-                 "message": {"role": "user",
-                             "content": "[Request interrupted by user for tool use]"}}
-    s = parse(tmp_path, [prompt("p1", None, 0), assistant("a1", "p1", 1, stop="tool_use"),
-                         interrupt])
+    interrupt = {
+        "type": "user",
+        "uuid": "i1",
+        "parentUuid": "a1",
+        "sessionId": SID,
+        "timestamp": ts(4),
+        "message": {"role": "user", "content": "[Request interrupted by user for tool use]"},
+    }
+    s = parse(
+        tmp_path, [prompt("p1", None, 0), assistant("a1", "p1", 1, stop="tool_use"), interrupt]
+    )
     assert len(s.turns) == 1
     assert s.turns[0].interrupted is True
 
@@ -200,19 +255,29 @@ def test_entries_without_origin_use_text_heuristic_for_prompts(tmp_path):
 
 
 def test_user_entry_with_non_human_origin_is_not_a_prompt(tmp_path):
-    notification = prompt("n1", "a1", 2, "task notification", human=False,
-                          origin={"kind": "task-notification"})
-    entries = [prompt("p1", None, 0, "real prompt"), assistant("a1", "p1", 1, "answer"),
-               notification, assistant("a2", "n1", 3, "follow-up")]
+    notification = prompt(
+        "n1", "a1", 2, "task notification", human=False, origin={"kind": "task-notification"}
+    )
+    entries = [
+        prompt("p1", None, 0, "real prompt"),
+        assistant("a1", "p1", 1, "answer"),
+        notification,
+        assistant("a2", "n1", 3, "follow-up"),
+    ]
     s = parse(tmp_path, entries)
     assert [t.turn_id for t in s.turns] == ["p1"]
     assert s.turns[0].final_message == "follow-up"
 
 
 def test_synthetic_model_names_are_ignored(tmp_path):
-    s = parse(tmp_path, [prompt("p1", None, 0),
-                         assistant("a1", "p1", 1, "x", stop="tool_use", model="claude-real"),
-                         assistant("a2", "a1", 2, "y", model="<synthetic>")])
+    s = parse(
+        tmp_path,
+        [
+            prompt("p1", None, 0),
+            assistant("a1", "p1", 1, "x", stop="tool_use", model="claude-real"),
+            assistant("a2", "a1", 2, "y", model="<synthetic>"),
+        ],
+    )
     assert s.turns[0].model == "claude-real"
 
 
@@ -222,35 +287,61 @@ def test_turn_with_only_synthetic_model_has_no_model(tmp_path):
 
 
 def test_most_used_model_wins(tmp_path):
-    s = parse(tmp_path, [prompt("p1", None, 0),
-                         assistant("a1", "p1", 1, stop="tool_use", model="m-small"),
-                         assistant("a2", "a1", 2, stop="tool_use", model="m-big"),
-                         assistant("a3", "a2", 3, "done", model="m-big")])
+    s = parse(
+        tmp_path,
+        [
+            prompt("p1", None, 0),
+            assistant("a1", "p1", 1, stop="tool_use", model="m-small"),
+            assistant("a2", "a1", 2, stop="tool_use", model="m-big"),
+            assistant("a3", "a2", 3, "done", model="m-big"),
+        ],
+    )
     assert s.turns[0].model == "m-big"
 
 
 def test_file_tools_are_deduplicated_and_notebooks_counted(tmp_path):
-    tools = [("Edit", {"file_path": "/w/a.py"}), ("MultiEdit", {"file_path": "/w/a.py"}),
-             ("NotebookEdit", {"notebook_path": "/w/n.ipynb"}), ("Read", {"file_path": "/w/r.py"}),
-             ("Write", {"file_path": "/w/b.py"})]
-    s = parse(tmp_path, [prompt("p1", None, 0), assistant("a1", "p1", 1, stop="tool_use",
-                                                          tools=tools),
-                         assistant("a2", "a1", 2, "done")])
+    tools = [
+        ("Edit", {"file_path": "/w/a.py"}),
+        ("MultiEdit", {"file_path": "/w/a.py"}),
+        ("NotebookEdit", {"notebook_path": "/w/n.ipynb"}),
+        ("Read", {"file_path": "/w/r.py"}),
+        ("Write", {"file_path": "/w/b.py"}),
+    ]
+    s = parse(
+        tmp_path,
+        [
+            prompt("p1", None, 0),
+            assistant("a1", "p1", 1, stop="tool_use", tools=tools),
+            assistant("a2", "a1", 2, "done"),
+        ],
+    )
     assert s.turns[0].files_changed == ["/w/a.py", "/w/n.ipynb", "/w/b.py"]
 
 
 def test_final_message_is_last_non_empty_text(tmp_path):
-    s = parse(tmp_path, [prompt("p1", None, 0), assistant("a1", "p1", 1, "first", stop="tool_use"),
-                         assistant("a2", "a1", 2, "   ", stop="tool_use"),
-                         assistant("a3", "a2", 3, "last")])
+    s = parse(
+        tmp_path,
+        [
+            prompt("p1", None, 0),
+            assistant("a1", "p1", 1, "first", stop="tool_use"),
+            assistant("a2", "a1", 2, "   ", stop="tool_use"),
+            assistant("a3", "a2", 3, "last"),
+        ],
+    )
     assert s.turns[0].final_message == "last"
 
 
 def test_excerpt_is_capped_at_max_chars(tmp_path):
     tools = [("Bash", {"command": f"echo {i} " + "x" * 500}) for i in range(100)]
-    s = parse(tmp_path, [prompt("p1", None, 0), assistant("a1", "p1", 1, stop="tool_use",
-                                                          tools=tools),
-                         assistant("a2", "a1", 2, "done")], max_chars=1000)
+    s = parse(
+        tmp_path,
+        [
+            prompt("p1", None, 0),
+            assistant("a1", "p1", 1, stop="tool_use", tools=tools),
+            assistant("a2", "a1", 2, "done"),
+        ],
+        max_chars=1000,
+    )
     assert len(s.turns[0].transcript_excerpt) < 1100
     assert len(s.turns[0].commands_run) == 100  # facts are not truncated
 
@@ -264,20 +355,40 @@ def test_cycle_in_parent_links_does_not_hang(tmp_path):
 def test_entry_with_unparseable_prompt_timestamp_is_skipped(tmp_path):
     bad = prompt("p1", None, 0)
     bad["timestamp"] = "garbage"
-    s = parse(tmp_path, [bad, assistant("a1", "p1", 1, "done"),
-                         prompt("p2", "a1", 2), assistant("a2", "p2", 3, "done")])
+    s = parse(
+        tmp_path,
+        [
+            bad,
+            assistant("a1", "p1", 1, "done"),
+            prompt("p2", "a1", 2),
+            assistant("a2", "p2", 3, "done"),
+        ],
+    )
     assert [t.turn_id for t in s.turns] == ["p2"]
 
 
 def test_attachment_after_final_reply_does_not_make_turn_incomplete(tmp_path):
     # Real transcripts interleave `attachment` entries (uuid + parentUuid, no message) in the
     # chain. An attachment after the end_turn reply must not reset the completion state.
-    attachment = {"type": "attachment", "uuid": "at1", "parentUuid": "a1", "sessionId": SID,
-                  "timestamp": ts(3), "attachment": {"type": "synthetic"}}
-    away = {"type": "system", "subtype": "away_summary", "uuid": "sy1", "parentUuid": "at1",
-            "sessionId": SID, "timestamp": ts(4), "isMeta": True, "content": "synthetic"}
-    s = parse(tmp_path, [prompt("p1", None, 0), assistant("a1", "p1", 2, "done"), attachment,
-                         away])
+    attachment = {
+        "type": "attachment",
+        "uuid": "at1",
+        "parentUuid": "a1",
+        "sessionId": SID,
+        "timestamp": ts(3),
+        "attachment": {"type": "synthetic"},
+    }
+    away = {
+        "type": "system",
+        "subtype": "away_summary",
+        "uuid": "sy1",
+        "parentUuid": "at1",
+        "sessionId": SID,
+        "timestamp": ts(4),
+        "isMeta": True,
+        "content": "synthetic",
+    }
+    s = parse(tmp_path, [prompt("p1", None, 0), assistant("a1", "p1", 2, "done"), attachment, away])
     assert [t.turn_id for t in s.turns] == ["p1"]
 
 
@@ -294,15 +405,33 @@ def test_subagent_edits_and_commands_are_credited_to_the_turn_that_ran_them(tmp_
     ]
     subagents = tmp_path / SID / "subagents"
     subagents.mkdir(parents=True)
-    write_jsonl(subagents / "agent-x.jsonl", [
-        {**assistant("s1", None, 5, tools=[("Write", {"file_path": "/work/x/new.py"}),
-                                           ("Bash", {"command": "pytest"})]),
-         "isSidechain": True},
-        {**assistant("s2", "s1", 25, tools=[("Bash", {"command": "background, after turn"})]),
-         "isSidechain": True},
-        {**assistant("s3", "s2", 31, tools=[("Bash", {"command": "during turn 2"})]),
-         "isSidechain": True},
-    ])
+    write_jsonl(
+        subagents / "agent-x.jsonl",
+        [
+            {
+                **assistant(
+                    "s1",
+                    None,
+                    5,
+                    tools=[
+                        ("Write", {"file_path": "/work/x/new.py"}),
+                        ("Bash", {"command": "pytest"}),
+                    ],
+                ),
+                "isSidechain": True,
+            },
+            {
+                **assistant(
+                    "s2", "s1", 25, tools=[("Bash", {"command": "background, after turn"})]
+                ),
+                "isSidechain": True,
+            },
+            {
+                **assistant("s3", "s2", 31, tools=[("Bash", {"command": "during turn 2"})]),
+                "isSidechain": True,
+            },
+        ],
+    )
     first, second = parse(tmp_path, entries).turns
     assert first.files_changed == ["/work/x/new.py"]
     assert first.commands_run == ["pytest", "background, after turn"]

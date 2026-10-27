@@ -39,9 +39,18 @@ def test_agentlog_command_falls_back_to_python_module(monkeypatch):
 def test_spawn_sync_launches_detached_worker_with_delay(cfg, fake_which, popen_calls, tmp_path):
     cfg_file = tmp_path / "c.toml"
     hooks.spawn_sync("codex", Path("/t/rollout.jsonl"), cfg, cfg_file)
-    (args, kwargs), = popen_calls
-    assert args == [FAKE_EXE, "--config", str(cfg_file.resolve()), "sync", "codex",
-                    "/t/rollout.jsonl", "--delay", str(hooks.WORKER_DELAY_S), "--retry-failed"]
+    ((args, kwargs),) = popen_calls
+    assert args == [
+        FAKE_EXE,
+        "--config",
+        str(cfg_file.resolve()),
+        "sync",
+        "codex",
+        "/t/rollout.jsonl",
+        "--delay",
+        str(hooks.WORKER_DELAY_S),
+        "--retry-failed",
+    ]
     assert kwargs["start_new_session"] is True
     assert kwargs["stdin"] is subprocess.DEVNULL
     assert kwargs["stdout"].name == str(cfg.output_dir / "agentlog.log")
@@ -56,13 +65,18 @@ def test_spawn_sync_without_config_path_omits_flag(cfg, fake_which, popen_calls)
 
 
 def test_claude_hook_payload_gives_transcript_path(hermetic_home):
-    assert hooks.claude_transcript_from_hook(
-        json.dumps({"session_id": "s", "transcript_path": "~/p/s.jsonl"})
-    ) == hermetic_home / "p" / "s.jsonl"
+    assert (
+        hooks.claude_transcript_from_hook(
+            json.dumps({"session_id": "s", "transcript_path": "~/p/s.jsonl"})
+        )
+        == hermetic_home / "p" / "s.jsonl"
+    )
 
 
-@pytest.mark.parametrize("stdin", ["", "not json", "[1]", json.dumps({"session_id": "s"}),
-                                   json.dumps({"transcript_path": ""})])
+@pytest.mark.parametrize(
+    "stdin",
+    ["", "not json", "[1]", json.dumps({"session_id": "s"}), json.dumps({"transcript_path": ""})],
+)
 def test_claude_hook_bad_payload_gives_none(stdin):
     assert hooks.claude_transcript_from_hook(stdin) is None
 
@@ -85,8 +99,12 @@ def test_codex_notify_finds_rollout_by_thread_id(cfg, key):
 
 def test_codex_notify_ignores_other_event_types(cfg):
     _rollout(cfg.codex_home, "id-a")
-    assert hooks.codex_rollout_from_notify(json.dumps({"type": "approval-requested",
-                                                       "thread-id": "id-a"}), cfg) is None
+    assert (
+        hooks.codex_rollout_from_notify(
+            json.dumps({"type": "approval-requested", "thread-id": "id-a"}), cfg
+        )
+        is None
+    )
 
 
 @pytest.mark.parametrize("arg", [None, "", "not json", json.dumps({"type": "agent-turn-complete"})])
@@ -111,8 +129,9 @@ def test_install_claude_creates_settings_with_stop_and_session_end_hooks(tmp_pat
     data = json.loads(settings.read_text())
     for event in hooks.HOOK_EVENTS:
         (group,) = data["hooks"][event]
-        assert group["hooks"] == [{"type": "command", "command": f"{FAKE_EXE} hook claude",
-                                   "timeout": 10}]
+        assert group["hooks"] == [
+            {"type": "command", "command": f"{FAKE_EXE} hook claude", "timeout": 10}
+        ]
     assert not settings.with_suffix(".json.bak").exists()
 
 

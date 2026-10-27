@@ -41,13 +41,16 @@ def test_example_config_is_valid_and_loadable(tmp_path):
     assert tomllib.loads(EXAMPLE_CONFIG)["llm"]["max_input_chars"] == cfg.llm.max_input_chars
 
 
-@pytest.mark.parametrize("text", [
-    'unknown_key = 1\n',
-    '[llm]\nbogus = 1\n',
-    '[llm]\nmax_input_chars = 0\n',
-    '[llm]\ntimeout_s = -1\n',
-    '[llm]\nretries = -1\n',
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "unknown_key = 1\n",
+        "[llm]\nbogus = 1\n",
+        "[llm]\nmax_input_chars = 0\n",
+        "[llm]\ntimeout_s = -1\n",
+        "[llm]\nretries = -1\n",
+    ],
+)
 def test_invalid_config_is_rejected(tmp_path, text):
     path = tmp_path / "c.toml"
     path.write_text(text)

@@ -43,7 +43,9 @@ def sync_session(
 
     with session_lock(out):
         session = _load_or_set_aside(out) or Session(
-            session_id=parsed.session_id, tool=tool, started_at=parsed.started_at,
+            session_id=parsed.session_id,
+            tool=tool,
+            started_at=parsed.started_at,
             transcript_path=str(transcript),
         )
         session.title = parsed.title or session.title
@@ -53,10 +55,18 @@ def sync_session(
         stored = {t.turn_id: t for t in session.turns}
         # A turn can complete more than once (e.g. resumed by a background task under the
         # same prompt), so stored turns are redone whenever their facts changed.
-        changed = [pt for pt in parsed.turns
-                   if pt.turn_id not in stored or _facts(stored[pt.turn_id]) != _facts(pt)]
-        retries = [pt for pt in parsed.turns if resummarize_failed and pt not in changed
-                   and stored[pt.turn_id].summary_error is not None]
+        changed = [
+            pt
+            for pt in parsed.turns
+            if pt.turn_id not in stored or _facts(stored[pt.turn_id]) != _facts(pt)
+        ]
+        retries = [
+            pt
+            for pt in parsed.turns
+            if resummarize_failed
+            and pt not in changed
+            and stored[pt.turn_id].summary_error is not None
+        ]
 
         llm_down: str | None = None  # circuit breaker: once the server fails, stop calling it
         for pt in changed + retries:  # new work first, old failures after
@@ -77,7 +87,9 @@ def sync_session(
             if summary is None and existing and existing.summary:
                 summary = existing.summary  # stale beats none; summary_error marks it for retry
             stored[pt.turn_id] = Turn(
-                index=0, summary=summary, summary_error=error,
+                index=0,
+                summary=summary,
+                summary_error=error,
                 **pt.model_dump(exclude={"transcript_excerpt"}),
             )
             _save(out, session, stored)  # per turn, so a long backfill keeps its progress
@@ -87,8 +99,14 @@ def sync_session(
 
 
 def _facts(t: Turn | ParsedTurn) -> tuple:
-    return (t.finished_at, t.work_time_s, t.interrupted, tuple(t.files_changed),
-            tuple(t.commands_run), t.final_message)
+    return (
+        t.finished_at,
+        t.work_time_s,
+        t.interrupted,
+        tuple(t.files_changed),
+        tuple(t.commands_run),
+        t.final_message,
+    )
 
 
 def _load_or_set_aside(path: Path) -> Session | None:

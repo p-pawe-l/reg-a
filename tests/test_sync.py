@@ -111,8 +111,9 @@ def test_turns_missing_from_a_later_transcript_are_kept(tmp_path, cfg):
 
 
 def test_summary_error_stores_fallback_record(tmp_path, cfg):
-    out = sync_session("claude-code", copy_claude(tmp_path), cfg,
-                       summarize=Recorder(fail_on={"u3"}))
+    out = sync_session(
+        "claude-code", copy_claude(tmp_path), cfg, summarize=Recorder(fail_on={"u3"})
+    )
     t = load_session(out).turns[1]
     assert t.summary is None
     assert t.summary_error.startswith("invalid summary JSON")
@@ -120,8 +121,9 @@ def test_summary_error_stores_fallback_record(tmp_path, cfg):
 
 
 def test_unexpected_summarizer_exception_is_stored_not_raised(tmp_path, cfg):
-    out = sync_session("claude-code", copy_claude(tmp_path), cfg,
-                       summarize=Recorder(crash_on={"u1"}))
+    out = sync_session(
+        "claude-code", copy_claude(tmp_path), cfg, summarize=Recorder(crash_on={"u1"})
+    )
     s = load_session(out)
     assert s.turns[0].summary is None
     assert s.turns[0].summary_error == "RuntimeError: summarizer bug"
@@ -164,9 +166,12 @@ def test_default_summarizer_uses_config_and_falls_back_on_bad_llm(tmp_path, cfg,
     real_init = Summarizer.__init__
 
     def init(self, llm_cfg, language, client=None):
-        real_init(self, llm_cfg, language,
-                  client=httpx.Client(transport=httpx.MockTransport(handler),
-                                      base_url=llm_cfg.base_url))
+        real_init(
+            self,
+            llm_cfg,
+            language,
+            client=httpx.Client(transport=httpx.MockTransport(handler), base_url=llm_cfg.base_url),
+        )
 
     monkeypatch.setattr(Summarizer, "__init__", init)
     out = sync_session("codex", CODEX_FIXTURE, cfg)
@@ -184,8 +189,12 @@ def test_concurrent_syncs_summarize_each_turn_once(tmp_path, cfg):
         time.sleep(0.05)
         return make_summary()
 
-    threads = [threading.Thread(target=sync_session, args=("claude-code", transcript, cfg),
-                                kwargs={"summarize": slow}) for _ in range(2)]
+    threads = [
+        threading.Thread(
+            target=sync_session, args=("claude-code", transcript, cfg), kwargs={"summarize": slow}
+        )
+        for _ in range(2)
+    ]
     for t in threads:
         t.start()
     for t in threads:
@@ -224,17 +233,24 @@ def test_turn_completing_twice_is_resummarized_with_its_grown_facts(tmp_path, cf
     from test_claude_parser import SID, assistant, duration, prompt, tool_result
 
     transcript = tmp_path / f"{SID}.jsonl"
-    first_stop = [prompt("p1", None, 0, "Go"), assistant("a1", "p1", 1, "started agents"),
-                  duration("d1", "a1", 2, 2_000)]
+    first_stop = [
+        prompt("p1", None, 0, "Go"),
+        assistant("a1", "p1", 1, "started agents"),
+        duration("d1", "a1", 2, 2_000),
+    ]
     write_jsonl(transcript, first_stop)
     sync_session("claude-code", transcript, cfg, summarize=Recorder())
 
-    write_jsonl(transcript, first_stop + [
-        assistant("a2", "d1", 10, tools=[("Bash", {"command": "pytest"})], stop="tool_use"),
-        tool_result("r2", "a2", 11),
-        assistant("a3", "r2", 12, "all done"),
-        duration("d2", "a3", 13, 3_000),
-    ])
+    write_jsonl(
+        transcript,
+        first_stop
+        + [
+            assistant("a2", "d1", 10, tools=[("Bash", {"command": "pytest"})], stop="tool_use"),
+            tool_result("r2", "a2", 11),
+            assistant("a3", "r2", 12, "all done"),
+            duration("d2", "a3", 13, 3_000),
+        ],
+    )
     rec = Recorder()
     out = sync_session("claude-code", transcript, cfg, summarize=rec)
     (turn,) = load_session(out).turns
@@ -289,8 +305,11 @@ def test_failed_refresh_keeps_previous_good_summary(tmp_path, cfg):
     from test_claude_parser import SID, assistant, duration, prompt
 
     transcript = tmp_path / f"{SID}.jsonl"
-    first = [prompt("p1", None, 0, "Go"), assistant("a1", "p1", 1, "v1"),
-             duration("d1", "a1", 2, 2_000)]
+    first = [
+        prompt("p1", None, 0, "Go"),
+        assistant("a1", "p1", 1, "v1"),
+        duration("d1", "a1", 2, 2_000),
+    ]
     write_jsonl(transcript, first)
     sync_session("claude-code", transcript, cfg, summarize=Recorder())
     write_jsonl(transcript, first + [assistant("a2", "d1", 5, "v2"), duration("d2", "a2", 6, 1)])

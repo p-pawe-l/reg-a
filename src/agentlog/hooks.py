@@ -31,9 +31,20 @@ def spawn_sync(tool: Tool, transcript: Path, cfg: Config, config_path: Path | No
     config_args = ["--config", str(config_path.resolve())] if config_path else []
     with open(cfg.output_dir / "agentlog.log", "a") as log:
         subprocess.Popen(
-            [*agentlog_command(), *config_args, "sync", tool, str(transcript),
-             "--delay", str(WORKER_DELAY_S), "--retry-failed"],
-            stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True,
+            [
+                *agentlog_command(),
+                *config_args,
+                "sync",
+                tool,
+                str(transcript),
+                "--delay",
+                str(WORKER_DELAY_S),
+                "--retry-failed",
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=log,
+            start_new_session=True,
         )
 
 
@@ -58,8 +69,12 @@ def codex_rollout_from_notify(arg: str | None, cfg: Config) -> Path | None:
             if payload.get("type") not in (None, "agent-turn-complete"):
                 return None
             session_id = next(
-                (payload[k] for k in ("thread-id", "thread_id", "session-id", "session_id")
-                 if payload.get(k)), None,
+                (
+                    payload[k]
+                    for k in ("thread-id", "thread_id", "session-id", "session_id")
+                    if payload.get(k)
+                ),
+                None,
             )
     return find_rollout(cfg.codex_home, session_id)
 
@@ -74,8 +89,11 @@ def install_claude(settings_path: Path) -> str:
     added = []
     for event in HOOK_EVENTS:
         groups = hooks.setdefault(event, [])
-        if any("agentlog" in h.get("command", "") and "hook claude" in h.get("command", "")
-               for g in groups for h in g.get("hooks", [])):
+        if any(
+            "agentlog" in h.get("command", "") and "hook claude" in h.get("command", "")
+            for g in groups
+            for h in g.get("hooks", [])
+        ):
             continue
         groups.append({"hooks": [{"type": "command", "command": command, "timeout": 10}]})
         added.append(event)

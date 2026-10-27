@@ -13,8 +13,12 @@ from agentlog.models import ParsedSession, ParsedTurn
 from agentlog.parsers import EmptyTranscriptError, Excerpt, parse_ts, read_jsonl
 
 CONVERSATION_TYPES = {"user", "assistant", "system"}
-FILE_TOOLS = {"Write": "file_path", "Edit": "file_path", "MultiEdit": "file_path",
-              "NotebookEdit": "notebook_path"}
+FILE_TOOLS = {
+    "Write": "file_path",
+    "Edit": "file_path",
+    "MultiEdit": "file_path",
+    "NotebookEdit": "notebook_path",
+}
 INTERRUPT_PREFIX = "[Request interrupted"
 
 
@@ -49,8 +53,11 @@ def _is_human_prompt(entry: dict) -> bool:
 def _live_chain(entries: list[dict]) -> list[dict]:
     by_uuid = {e["uuid"]: e for e in entries if "uuid" in e}
     leaf = next(
-        (e for e in reversed(entries)
-         if e.get("type") in CONVERSATION_TYPES and "uuid" in e and not e.get("isSidechain")),
+        (
+            e
+            for e in reversed(entries)
+            if e.get("type") in CONVERSATION_TYPES and "uuid" in e and not e.get("isSidechain")
+        ),
         None,
     )
     chain: list[dict] = []
@@ -137,8 +144,16 @@ def _build_turn(prompt: dict, body: list[dict], max_chars: int) -> ParsedTurn | 
 
 
 def _describe_tool_input(name: str, inp: dict) -> str:
-    for key in ("command", "file_path", "notebook_path", "pattern", "url", "query",
-                "description", "prompt"):
+    for key in (
+        "command",
+        "file_path",
+        "notebook_path",
+        "pattern",
+        "url",
+        "query",
+        "description",
+        "prompt",
+    ):
         if inp.get(key):
             return str(inp[key])
     return name
@@ -190,10 +205,19 @@ def parse_claude_transcript(path: Path, max_chars: int = 20_000) -> ParsedSessio
 
     _add_subagent_work(path.parent / session_id / "subagents", turns)
 
-    started = turns[0].started_at if turns else next(
-        (t for e in entries if (t := parse_ts(e.get("timestamp")))), None
+    started = (
+        turns[0].started_at
+        if turns
+        else next((t for e in entries if (t := parse_ts(e.get("timestamp")))), None)
     )
     if started is None:
         raise EmptyTranscriptError(f"no timestamps in {path}")
-    return ParsedSession(session_id=session_id, tool="claude-code", title=title, cwd=cwd,
-                         started_at=started, transcript_path=str(path), turns=turns)
+    return ParsedSession(
+        session_id=session_id,
+        tool="claude-code",
+        title=title,
+        cwd=cwd,
+        started_at=started,
+        transcript_path=str(path),
+        turns=turns,
+    )

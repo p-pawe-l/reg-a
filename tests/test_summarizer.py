@@ -18,16 +18,26 @@ GOOD = {"summary": "Added greet().", "actions": ["edited hello.py"], "outcome": 
 
 
 def parsed_turn(**kw) -> ParsedTurn:
-    base = dict(turn_id="t1", user_prompt="Add greet", started_at=datetime(2026, 1, 2, tzinfo=UTC),
-                finished_at=datetime(2026, 1, 2, 0, 1, tzinfo=UTC), work_time_s=60, model="m",
-                interrupted=False, files_changed=[], commands_run=[], final_message="",
-                transcript_excerpt="[user] Add greet\n[assistant] done")
+    base = dict(
+        turn_id="t1",
+        user_prompt="Add greet",
+        started_at=datetime(2026, 1, 2, tzinfo=UTC),
+        finished_at=datetime(2026, 1, 2, 0, 1, tzinfo=UTC),
+        work_time_s=60,
+        model="m",
+        interrupted=False,
+        files_changed=[],
+        commands_run=[],
+        final_message="",
+        transcript_excerpt="[user] Add greet\n[assistant] done",
+    )
     return ParsedTurn(**(base | kw))
 
 
 def chat_reply(content):
-    return httpx.Response(200, json={"choices": [{"message": {"role": "assistant",
-                                                              "content": content}}]})
+    return httpx.Response(
+        200, json={"choices": [{"message": {"role": "assistant", "content": content}}]}
+    )
 
 
 class FakeLLM:
@@ -50,8 +60,9 @@ class FakeLLM:
 
 def summarizer(fake, retries=1, language="en", **cfg):
     client = httpx.Client(transport=httpx.MockTransport(fake), base_url="http://llm.test/v1")
-    return Summarizer(LLMConfig(retries=retries, model="test-model", **cfg), language,
-                      client=client)
+    return Summarizer(
+        LLMConfig(retries=retries, model="test-model", **cfg), language, client=client
+    )
 
 
 def test_valid_reply_is_parsed_into_turn_summary():
@@ -87,7 +98,7 @@ def test_invalid_json_is_retried_then_succeeds():
 
 
 def test_invalid_json_twice_raises_summary_error():
-    fake = FakeLLM("nope", "{\"summary\": 1}")
+    fake = FakeLLM("nope", '{"summary": 1}')
     with pytest.raises(SummaryError, match="invalid summary JSON"):
         summarizer(fake).summarize(parsed_turn(), "claude-code")
     assert len(fake.requests) == 2
@@ -137,7 +148,7 @@ def test_null_content_counts_as_invalid_reply():
 
 
 def test_reply_wrapped_in_think_block_and_code_fence_is_accepted():
-    raw = f"<think>{{\"not\": \"this\"}}</think>\n```json\n{json.dumps(GOOD)}\n```"
+    raw = f'<think>{{"not": "this"}}</think>\n```json\n{json.dumps(GOOD)}\n```'
     fake = FakeLLM(raw)
     assert summarizer(fake).summarize(parsed_turn(), "codex") == TurnSummary(**GOOD)
 
@@ -180,9 +191,11 @@ def test_connection_failure_marks_error_as_unavailable():
     def handler(request):
         raise httpx.ConnectError("refused")
 
-    s = Summarizer(LLMConfig(base_url="http://llm.test/v1", retries=0), "en",
-                   client=httpx.Client(transport=httpx.MockTransport(handler),
-                                       base_url="http://llm.test/v1"))
+    s = Summarizer(
+        LLMConfig(base_url="http://llm.test/v1", retries=0),
+        "en",
+        client=httpx.Client(transport=httpx.MockTransport(handler), base_url="http://llm.test/v1"),
+    )
     with pytest.raises(SummaryError) as exc:
         s.summarize(parsed_turn(), "claude-code")
     assert exc.value.unavailable is True

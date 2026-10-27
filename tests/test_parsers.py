@@ -6,8 +6,9 @@ from agentlog.parsers import Excerpt, clip, parse_ts, read_jsonl
 
 
 def test_read_jsonl_skips_blank_garbage_partial_and_non_object_lines(tmp_path):
-    path = write_jsonl(tmp_path / "t.jsonl", [{"a": 1}, "", "garbage", "[1, 2]", "42", {"b": 2},
-                                              '{"partial": '])
+    path = write_jsonl(
+        tmp_path / "t.jsonl", [{"a": 1}, "", "garbage", "[1, 2]", "42", {"b": 2}, '{"partial": ']
+    )
     assert list(read_jsonl(path)) == [{"a": 1}, {"b": 2}]
 
 
