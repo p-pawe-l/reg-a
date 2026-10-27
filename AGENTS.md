@@ -98,12 +98,15 @@ Key everything by `(tool, session_id)`; the file is `<output_dir>/<tool>-<sessio
 ```sh
 uv sync                                   # dev environment
 uv run pytest                             # all tests (hermetic: no LLM, no TeX, no real ~)
+uv run ruff format                        # format (CI fails on unformatted code)
 uv run ruff check                         # lint
 uv run agentlog --help                    # CLI; each subcommand has --help
 uv tool install -e .                      # put `agentlog` on PATH (needed before `install`)
 agentlog sync claude <transcript.jsonl>   # run a sync by hand (foreground)
 agentlog convert-to-pdf <id> --tex-only   # render .tex without TeX Live
 ```
+
+**CI** (`.github/workflows/ci.yml`, GitHub Actions, on push to `master`, every PR, and manual dispatch) runs three jobs: *Format & lint* (`ruff format --check`, `ruff check`), *Tests* (`pytest`, JUnit report uploaded), and *Build package* (`uv build`, installs the wheel into a clean venv and runs `agentlog --help`, uploads `dist/`). Build runs only when the first two pass. All jobs use `uv sync --locked`, so after changing dependencies, commit the updated `uv.lock`. There is no publish step; releasing to PyPI is not set up. Before every commit, run the same checks locally: `uv run ruff format && uv run ruff check && uv run pytest`.
 
 Python ≥ 3.14, dependencies: httpx, jinja2, pydantic. Runtime prerequisites (not installed on the dev machine yet): Ollama (`ollama pull qwen3:8b`) and TeX Live (Arch: `texlive-basic texlive-latexextra texlive-langextra texlive-binextra texlive-fontsrecommended`).
 

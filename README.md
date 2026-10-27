@@ -182,8 +182,11 @@ Everything except `summary` comes straight from the transcript. `summary` is wri
 
 ```sh
 uv sync
-uv run pytest
-uv run ruff check
+uv run ruff format      # format
+uv run ruff check       # lint
+uv run pytest           # tests
 ```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the format check, lint and tests on every push to `master` and every pull request, then builds the wheel and smoke-tests it.
 
 See `AGENTS.md` for the architecture, design decisions and open to-dos.
