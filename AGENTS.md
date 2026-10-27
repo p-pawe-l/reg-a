@@ -92,6 +92,28 @@ Key everything by `(tool, session_id)`.
 
 Python with `uv`; package under `src/agentlog/`, tests under `tests/` (pytest). Runtime prerequisites not yet installed on the dev machine: Ollama (`ollama pull qwen3:8b`) and TeX Live (`texlive-basic texlive-latexextra texlive-langextra texlive-binextra`). Record real commands here once `pyproject.toml` exists.
 
+## Subagents and workflow
+
+Three project subagents live in `.claude/agents/`. Each file is a self-contained role prompt.
+
+| Agent | Role | When |
+|---|---|---|
+| `test-code` | Writes and runs hermetic pytest tests for the new feature | After implementing a feature |
+| `code-review` | Scans the repo and lists every problem to fix (read-only) | After tests are written |
+| `update-agentmd-readme` | Brings AGENTS.md (status, implemented, to-do) and README.md in line with the code | After review findings are fixed |
+
+Every time you implement a part of the system, run this loop:
+
+1. Implement the part.
+2. **test-code**: tests for it; fix code bugs it reports.
+3. **code-review**: fix every `high` and `medium` finding; rerun until the verdict is `READY TO COMMIT`. Note any skipped `low` findings as to-dos.
+4. **update-agentmd-readme**: docs match the code.
+5. Commit (rules below).
+
+How to run them:
+- **Claude Code**: launch through the Agent tool with `subagent_type` set to the agent's name.
+- **Codex** (or any agent without `.claude/agents` support): read the agent's file and either hand its body to a subagent as instructions, or perform the role yourself, following its steps and output format exactly.
+
 ## Commits
 
 Commit on your own initiative every time a change is **good**: one logical change, finished, and verified (tests pass, or the behaviour was checked by running it). Commit each good change as soon as it's done, before starting the next one. Keep unrelated changes in separate commits, and leave unfinished work uncommitted.
