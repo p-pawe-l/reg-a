@@ -12,10 +12,10 @@ from conftest import (
     make_summary,
 )
 
-from agentlog import sync as sync_mod
-from agentlog.store import load_session
-from agentlog.summarizer import Summarizer, SummaryError
-from agentlog.sync import sync_session
+from reg_a import sync as sync_mod
+from reg_a.store import load_session
+from reg_a.summarizer import Summarizer, SummaryError
+from reg_a.sync import sync_session
 
 
 class Recorder:

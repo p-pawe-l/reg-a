@@ -1,5 +1,5 @@
 [project]
-name = "agentlog"
+name = "reg-a"
 version = "0.1.0"
 description = "Log Claude Code and Codex sessions with local-LLM turn summaries and PDF reports"
 authors = [
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-agentlog = "agentlog.cli:main"
+reg-a = "reg_a.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.13,<0.13.0"]

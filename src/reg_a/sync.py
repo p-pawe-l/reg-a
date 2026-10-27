@@ -10,12 +10,12 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-from agentlog.config import Config
-from agentlog.models import ParsedSession, ParsedTurn, Session, Tool, Turn, TurnSummary
-from agentlog.parsers.claude import parse_claude_transcript
-from agentlog.parsers.codex import parse_codex_rollout
-from agentlog.store import load_session, save_session, session_lock, session_path
-from agentlog.summarizer import Summarizer, SummaryError
+from reg_a.config import Config
+from reg_a.models import ParsedSession, ParsedTurn, Session, Tool, Turn, TurnSummary
+from reg_a.parsers.claude import parse_claude_transcript
+from reg_a.parsers.codex import parse_codex_rollout
+from reg_a.store import load_session, save_session, session_lock, session_path
+from reg_a.summarizer import Summarizer, SummaryError
 
 log = logging.getLogger(__name__)
 

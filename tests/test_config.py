@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from agentlog.config import EXAMPLE_CONFIG, Config, default_config_path, load_config
+from reg_a.config import EXAMPLE_CONFIG, Config, default_config_path, load_config
 
 
 def test_missing_file_gives_defaults(tmp_path):
@@ -17,7 +17,7 @@ def test_missing_file_gives_defaults(tmp_path):
 
 def test_paths_are_expanded_against_home(hermetic_home):
     cfg = Config()
-    assert cfg.output_dir == hermetic_home / "agentlog" / "sessions"
+    assert cfg.output_dir == hermetic_home / "reg-a" / "sessions"
     assert cfg.claude_home == hermetic_home / ".claude"
     assert cfg.codex_home == hermetic_home / ".codex"
 
@@ -66,15 +66,15 @@ def test_malformed_toml_raises(tmp_path):
 
 
 def test_default_config_path_honours_env_var(monkeypatch, hermetic_home):
-    monkeypatch.setenv("AGENTLOG_CONFIG", "~/custom.toml")
+    monkeypatch.setenv("REG_A_CONFIG", "~/custom.toml")
     assert default_config_path() == hermetic_home / "custom.toml"
-    monkeypatch.delenv("AGENTLOG_CONFIG")
-    assert default_config_path() == hermetic_home / ".config" / "agentlog" / "config.toml"
+    monkeypatch.delenv("REG_A_CONFIG")
+    assert default_config_path() == hermetic_home / ".config" / "reg-a" / "config.toml"
 
 
 def test_load_config_without_path_uses_env_location(tmp_path, monkeypatch):
     path = tmp_path / "env.toml"
     path.write_text('language = "de"\n')
-    monkeypatch.setenv("AGENTLOG_CONFIG", str(path))
+    monkeypatch.setenv("REG_A_CONFIG", str(path))
     assert load_config().language == "de"
     assert isinstance(load_config().output_dir, Path)

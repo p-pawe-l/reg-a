@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta, timezone
 
 from conftest import write_jsonl
 
-from agentlog.parsers import Excerpt, clip, parse_ts, read_jsonl
+from reg_a.parsers import Excerpt, clip, parse_ts, read_jsonl
 
 
 def test_read_jsonl_skips_blank_garbage_partial_and_non_object_lines(tmp_path):
@@ -81,6 +81,6 @@ def test_excerpt_render_caps_total_size():
 
 
 def test_clip_with_tiny_limit_still_truncates():
-    from agentlog.parsers import clip
+    from reg_a.parsers import clip
 
     assert clip("x" * 1000, 30) == "x" * 30

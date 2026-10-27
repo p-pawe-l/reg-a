@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from agentlog import cli, report
-from agentlog.models import Session, Turn, TurnSummary
-from agentlog.report import (
+from reg_a import cli, report
+from reg_a.models import Session, Turn, TurnSummary
+from reg_a.report import (
     LatexError,
     build_pdf,
     clip,
@@ -19,7 +19,7 @@ from agentlog.report import (
     tex,
     tt,
 )
-from agentlog.store import save_session
+from reg_a.store import save_session
 
 SID = "11111111-2222-4333-8444-555555555555"
 SID2 = "11112222-0000-4000-8000-000000000000"
@@ -443,7 +443,7 @@ def sessions(tmp_path):
 
 
 def config_file(tmp_path, language="en"):
-    path = tmp_path / "agentlog.toml"
+    path = tmp_path / "reg-a.toml"
     path.write_text(
         f'language = "{language}"\noutput_dir = "{tmp_path / "sessions"}"\n'
         '[llm]\nbase_url = "http://llm.test/v1"\n'

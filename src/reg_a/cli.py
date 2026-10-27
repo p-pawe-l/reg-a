@@ -1,4 +1,4 @@
-"""`agentlog` command line."""
+"""`reg-a` command line."""
 
 import argparse
 import logging
@@ -6,11 +6,11 @@ import sys
 import time
 from pathlib import Path
 
-from agentlog import hooks, report
-from agentlog.config import EXAMPLE_CONFIG, default_config_path, load_config
-from agentlog.parsers import EmptyTranscriptError
-from agentlog.store import list_sessions, load_session
-from agentlog.sync import sync_session
+from reg_a import hooks, report
+from reg_a.config import EXAMPLE_CONFIG, default_config_path, load_config
+from reg_a.parsers import EmptyTranscriptError
+from reg_a.store import list_sessions, load_session
+from reg_a.sync import sync_session
 
 TOOL_ALIASES = {"claude": "claude-code", "claude-code": "claude-code", "codex": "codex"}
 
@@ -123,12 +123,12 @@ def cmd_init_config(args, cfg) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="agentlog", description=__doc__)
+    p = argparse.ArgumentParser(prog="reg-a", description=__doc__)
     p.add_argument(
         "--config",
         type=Path,
         default=None,
-        help="config file (default: $AGENTLOG_CONFIG or ~/.config/agentlog/config.toml)",
+        help="config file (default: $REG_A_CONFIG or ~/.config/reg-a/config.toml)",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -158,7 +158,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--tex-only", action="store_true", help="write the .tex, skip the PDF build")
     s.set_defaults(func=cmd_convert)
 
-    s = sub.add_parser("install", help="register agentlog hooks with Claude Code or Codex")
+    s = sub.add_parser("install", help="register reg-a hooks with Claude Code or Codex")
     s.add_argument("tool", type=_tool)
     s.add_argument(
         "--project",

@@ -1,6 +1,6 @@
 ---
 name: test-code
-description: Writes pytest tests for newly implemented agentlog features and runs them. Run after implementing a feature, before code review.
+description: Writes pytest tests for newly implemented reg-a features and runs them. Run after implementing a feature, before code review.
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 

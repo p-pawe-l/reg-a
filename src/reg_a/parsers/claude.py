@@ -9,8 +9,8 @@ it into turns at each human prompt.
 from collections import Counter
 from pathlib import Path
 
-from agentlog.models import ParsedSession, ParsedTurn
-from agentlog.parsers import EmptyTranscriptError, Excerpt, parse_ts, read_jsonl
+from reg_a.models import ParsedSession, ParsedTurn
+from reg_a.parsers import EmptyTranscriptError, Excerpt, parse_ts, read_jsonl
 
 CONVERSATION_TYPES = {"user", "assistant", "system"}
 FILE_TOOLS = {

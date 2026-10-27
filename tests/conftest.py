@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from agentlog.config import Config, LLMConfig
-from agentlog.models import TurnSummary
+from reg_a.config import Config, LLMConfig
+from reg_a.models import TurnSummary
 
 FIXTURES = Path(__file__).parent / "fixtures"
 CLAUDE_FIXTURE = FIXTURES / "claude_session.jsonl"
@@ -19,7 +19,7 @@ def hermetic_home(tmp_path, monkeypatch):
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("AGENTLOG_CONFIG", str(home / "agentlog.toml"))
+    monkeypatch.setenv("REG_A_CONFIG", str(home / "reg-a.toml"))
     monkeypatch.delenv("CODEX_HOME", raising=False)
     return home
 

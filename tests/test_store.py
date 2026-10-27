@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from agentlog.models import Session, Turn
-from agentlog.store import list_sessions, load_session, save_session, session_lock, session_path
+from reg_a.models import Session, Turn
+from reg_a.store import list_sessions, load_session, save_session, session_lock, session_path
 
 
 def make_session(sid="s1", n_turns=1) -> Session:
@@ -72,7 +72,7 @@ def test_list_sessions_returns_json_files_newest_first(tmp_path):
         save_session(p, make_session(name))
         os.utime(p, (mtime, mtime))
     (tmp_path / "a.lock").write_text("")
-    (tmp_path / "agentlog.log").write_text("")
+    (tmp_path / "reg-a.log").write_text("")
     assert [p.name for p in list_sessions(tmp_path)] == ["b.json", "c.json", "a.json"]
 
 

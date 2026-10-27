@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 import pytest
 from conftest import CODEX_FIXTURE, CODEX_SESSION_ID, write_jsonl
 
-from agentlog.parsers.codex import find_rollout, parse_codex_rollout
+from reg_a.parsers.codex import find_rollout, parse_codex_rollout
 
 SID = "01990000-0000-7000-8000-0000000000aa"
 T0 = 1767348000  # 2026-01-02T10:00:00Z

@@ -1,6 +1,6 @@
 """Configuration loaded from TOML.
 
-Location: $AGENTLOG_CONFIG, else ~/.config/agentlog/config.toml. A missing
+Location: $REG_A_CONFIG, else ~/.config/reg-a/config.toml. A missing
 file means all defaults.
 """
 
@@ -27,7 +27,7 @@ class Config(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_default=True)
 
     language: str = "en"
-    output_dir: Path = Path("~/agentlog/sessions")
+    output_dir: Path = Path("~/reg-a/sessions")
     claude_home: Path = Path("~/.claude")
     codex_home: Path = Path(os.environ.get("CODEX_HOME", "~/.codex"))
     llm: LLMConfig = LLMConfig()
@@ -39,8 +39,8 @@ class Config(BaseModel):
 
 
 def default_config_path() -> Path:
-    env = os.environ.get("AGENTLOG_CONFIG")
-    return Path(env).expanduser() if env else Path("~/.config/agentlog/config.toml").expanduser()
+    env = os.environ.get("REG_A_CONFIG")
+    return Path(env).expanduser() if env else Path("~/.config/reg-a/config.toml").expanduser()
 
 
 def load_config(path: Path | None = None) -> Config:
@@ -53,7 +53,7 @@ def load_config(path: Path | None = None) -> Config:
 
 EXAMPLE_CONFIG = """\
 language = "pl"                          # summary + report language: "pl", "en", or a language name
-output_dir = "~/agentlog/sessions"
+output_dir = "~/reg-a/sessions"
 
 [llm]
 base_url = "http://localhost:11434/v1"   # any OpenAI-compatible server (Ollama, llama.cpp, vLLM)

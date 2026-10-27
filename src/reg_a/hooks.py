@@ -1,8 +1,8 @@
 """Hook entry points and installers.
 
 The hook process must return immediately so the agent never waits on the LLM:
-it resolves the transcript path, spawns a detached `agentlog sync` worker,
-and exits 0. Worker output goes to `<output_dir>/agentlog.log`.
+it resolves the transcript path, spawns a detached `reg-a sync` worker,
+and exits 0. Worker output goes to `<output_dir>/reg-a.log`.
 """
 
 import json
@@ -13,26 +13,26 @@ import sys
 import tomllib
 from pathlib import Path
 
-from agentlog.config import Config
-from agentlog.models import Tool
-from agentlog.parsers.codex import find_rollout
+from reg_a.config import Config
+from reg_a.models import Tool
+from reg_a.parsers.codex import find_rollout
 
 HOOK_EVENTS = ("Stop", "SessionEnd")
 WORKER_DELAY_S = 1.0  # let the agent finish flushing the transcript before we parse it
 
 
-def agentlog_command() -> list[str]:
-    exe = shutil.which("agentlog")
-    return [exe] if exe else [sys.executable, "-m", "agentlog"]
+def reg_a_command() -> list[str]:
+    exe = shutil.which("reg-a")
+    return [exe] if exe else [sys.executable, "-m", "reg_a"]
 
 
 def spawn_sync(tool: Tool, transcript: Path, cfg: Config, config_path: Path | None) -> None:
     cfg.output_dir.mkdir(parents=True, exist_ok=True)
     config_args = ["--config", str(config_path.resolve())] if config_path else []
-    with open(cfg.output_dir / "agentlog.log", "a") as log:
+    with open(cfg.output_dir / "reg-a.log", "a") as log:
         subprocess.Popen(
             [
-                *agentlog_command(),
+                *reg_a_command(),
                 *config_args,
                 "sync",
                 tool,
@@ -82,23 +82,29 @@ def codex_rollout_from_notify(arg: str | None, cfg: Config) -> Path | None:
 # --- installers -----------------------------------------------------------------------------
 
 
+def _is_our_claude_hook(command: str) -> bool:
+    # Matches both the `reg-a hook claude` and `python -m reg_a hook claude` forms.
+    argv = shlex.split(command) if command else []
+    return argv[-2:] == ["hook", "claude"] and any(
+        Path(a).name == "reg-a" or a == "reg_a" for a in argv[:-2]
+    )
+
+
 def install_claude(settings_path: Path) -> str:
     settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
-    command = shlex.join([*agentlog_command(), "hook", "claude"])
+    command = shlex.join([*reg_a_command(), "hook", "claude"])
     hooks = settings.setdefault("hooks", {})
     added = []
     for event in HOOK_EVENTS:
         groups = hooks.setdefault(event, [])
         if any(
-            "agentlog" in h.get("command", "") and "hook claude" in h.get("command", "")
-            for g in groups
-            for h in g.get("hooks", [])
+            _is_our_claude_hook(h.get("command", "")) for g in groups for h in g.get("hooks", [])
         ):
             continue
         groups.append({"hooks": [{"type": "command", "command": command, "timeout": 10}]})
         added.append(event)
     if not added:
-        return f"agentlog hooks already present in {settings_path}"
+        return f"reg-a hooks already present in {settings_path}"
     settings_path.parent.mkdir(parents=True, exist_ok=True)
     if settings_path.exists():
         shutil.copy2(settings_path, settings_path.with_suffix(".json.bak"))
@@ -109,12 +115,12 @@ def install_claude(settings_path: Path) -> str:
 def install_codex(config_path: Path) -> str:
     text = config_path.read_text() if config_path.exists() else ""
     current = tomllib.loads(text).get("notify") if text else None
-    notify = [*agentlog_command(), "hook", "codex"]
+    notify = [*reg_a_command(), "hook", "codex"]
     if current == notify:
-        return f"agentlog notify already set in {config_path}"
+        return f"reg-a notify already set in {config_path}"
     if current is not None:
         raise SystemExit(
-            f"{config_path} already sets notify = {current!r}; agentlog won't overwrite it. "
+            f"{config_path} already sets notify = {current!r}; reg-a won't overwrite it. "
             f"Replace it by hand with: notify = {json.dumps(notify)}"
         )
     # `notify` is a top-level key, so it must precede the first [table].

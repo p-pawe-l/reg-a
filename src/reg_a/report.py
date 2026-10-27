@@ -12,7 +12,7 @@ from pathlib import Path
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
-from agentlog.models import Session
+from reg_a.models import Session
 
 TEX_SPECIALS = {
     "\\": r"\textbackslash{}",
@@ -149,7 +149,7 @@ def paragraphs(value: str) -> str:
 
 def _env() -> Environment:
     env = Environment(
-        loader=PackageLoader("agentlog", "templates"),
+        loader=PackageLoader("reg_a", "templates"),
         block_start_string=r"\BLOCK{",
         block_end_string="}",
         variable_start_string=r"\VAR{",

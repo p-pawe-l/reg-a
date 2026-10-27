@@ -1,5 +1,5 @@
 import sys
 
-from agentlog.cli import main
+from reg_a.cli import main
 
 sys.exit(main())

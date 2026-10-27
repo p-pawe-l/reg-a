@@ -5,15 +5,15 @@ import tomllib
 import pytest
 from conftest import CODEX_FIXTURE, CODEX_SESSION_ID, make_summary
 
-from agentlog import cli, hooks
-from agentlog import sync as sync_mod
-from agentlog.config import EXAMPLE_CONFIG
-from agentlog.store import load_session
+from reg_a import cli, hooks
+from reg_a import sync as sync_mod
+from reg_a.config import EXAMPLE_CONFIG
+from reg_a.store import load_session
 
 
 @pytest.fixture
 def cfg_file(tmp_path):
-    path = tmp_path / "agentlog.toml"
+    path = tmp_path / "reg-a.toml"
     path.write_text(
         f'output_dir = "{tmp_path / "sessions"}"\n'
         f'claude_home = "{tmp_path / "claude"}"\n'
@@ -179,7 +179,7 @@ def test_install_codex_writes_codex_config(cfg_file, tmp_path):
 
 
 def test_init_config_writes_example_to_default_path(hermetic_home, capsys):
-    target = hermetic_home / "agentlog.toml"  # $AGENTLOG_CONFIG from conftest
+    target = hermetic_home / "reg-a.toml"  # $REG_A_CONFIG from conftest
     assert cli.main(["init-config"]) == 0
     assert target.read_text() == EXAMPLE_CONFIG
     assert cli.main(["init-config"]) == 1

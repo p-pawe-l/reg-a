@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 from conftest import CLAUDE_FIXTURE, CLAUDE_SESSION_ID, write_jsonl
 
-from agentlog.parsers.claude import parse_claude_transcript
+from reg_a.parsers.claude import parse_claude_transcript
 
 SID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 

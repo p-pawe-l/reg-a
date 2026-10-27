@@ -11,8 +11,8 @@ import os
 import httpx
 from pydantic import ValidationError
 
-from agentlog.config import LLMConfig
-from agentlog.models import ParsedTurn, TurnSummary
+from reg_a.config import LLMConfig
+from reg_a.models import ParsedTurn, TurnSummary
 
 LANGUAGE_NAMES = {
     "pl": "Polish",

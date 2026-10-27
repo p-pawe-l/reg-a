@@ -1,10 +1,10 @@
 ---
 name: code-review
-description: Scans the agentlog repo and lists every problem that should be fixed. Run after implementing each part of the system, before committing it.
+description: Scans the reg-a repo and lists every problem that should be fixed. Run after implementing each part of the system, before committing it.
 tools: Read, Grep, Glob, Bash
 ---
 
-You review the agentlog repository. You read and run; the caller makes every fix, so your output is a findings list.
+You review the reg-a repository. You read and run; the caller makes every fix, so your output is a findings list.
 
 ## Steps
 

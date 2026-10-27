@@ -1,6 +1,6 @@
-# agentlog
+# reg-a
 
-agentlog keeps a log of your Claude Code and Codex sessions. After every turn it records your prompt and what the agent did (files changed, commands run, time spent, model), asks a local LLM for a short summary, and stores everything in one JSON file per session. You can render any session to a PDF report.
+reg-a keeps a log of your Claude Code and Codex sessions. After every turn it records your prompt and what the agent did (files changed, commands run, time spent, model), asks a local LLM for a short summary, and stores everything in one JSON file per session. You can render any session to a PDF report.
 
 Everything stays on your machine. The summaries come from a model you host yourself (Ollama, llama.cpp, vLLM or another OpenAI-compatible server).
 
@@ -24,22 +24,22 @@ From the repository:
 
 ```sh
 uv tool install -e .
-agentlog --help
+reg-a --help
 ```
 
-This puts `agentlog` on your `PATH`. The hooks call that binary, so install it this way before running `agentlog install`.
+This puts `reg-a` on your `PATH`. The hooks call that binary, so install it this way before running `reg-a install`.
 
 ## Configure
 
 ```sh
-agentlog init-config
+reg-a init-config
 ```
 
-This writes `~/.config/agentlog/config.toml` (or the path in `$AGENTLOG_CONFIG`, or `--config PATH`). Without a config file, agentlog uses the defaults below.
+This writes `~/.config/reg-a/config.toml` (or the path in `$REG_A_CONFIG`, or `--config PATH`). Without a config file, reg-a uses the defaults below.
 
 ```toml
 language = "pl"                          # summary + report language: "pl", "en", or a language name
-output_dir = "~/agentlog/sessions"
+output_dir = "~/reg-a/sessions"
 # claude_home = "~/.claude"
 # codex_home = "~/.codex"                # default: $CODEX_HOME or ~/.codex
 
@@ -56,7 +56,7 @@ retries = 1
 | Key | Default | Meaning |
 |---|---|---|
 | `language` | `"en"` | Language of the summaries and report labels. Report labels exist for `pl` and `en`; other languages get English labels. |
-| `output_dir` | `~/agentlog/sessions` | Where session JSON, reports and the log go. |
+| `output_dir` | `~/reg-a/sessions` | Where session JSON, reports and the log go. |
 | `claude_home` | `~/.claude` | Claude Code's config directory. |
 | `codex_home` | `$CODEX_HOME` or `~/.codex` | Codex's config directory. |
 | `llm.base_url` | `http://localhost:11434/v1` | OpenAI-compatible API base URL. |
@@ -72,26 +72,26 @@ Unknown keys are an error, so typos show up right away.
 ## Hook it up
 
 ```sh
-agentlog install claude            # adds Stop + SessionEnd hooks to ~/.claude/settings.json
-agentlog install claude --project  # ...or to ./.claude/settings.json
-agentlog install codex             # sets notify = [...] in ~/.codex/config.toml
+reg-a install claude            # adds Stop + SessionEnd hooks to ~/.claude/settings.json
+reg-a install claude --project  # ...or to ./.claude/settings.json
+reg-a install codex             # sets notify = [...] in ~/.codex/config.toml
 ```
 
-Both commands back up the file they change (`.bak`) and do nothing if agentlog is already set up. `install codex` won't replace an existing `notify` setting; it prints the line to put in by hand.
+Both commands back up the file they change (`.bak`) and do nothing if reg-a is already set up. `install codex` won't replace an existing `notify` setting; it prints the line to put in by hand.
 
-From then on, each finished turn runs `agentlog hook`, which starts `agentlog sync` in the background and returns immediately, so the agent never waits for the LLM. The background worker writes to `<output_dir>/agentlog.log`.
+From then on, each finished turn runs `reg-a hook`, which starts `reg-a sync` in the background and returns immediately, so the agent never waits for the LLM. The background worker writes to `<output_dir>/reg-a.log`.
 
 If the LLM is down, the turn is still recorded, without a summary. The next hook in that session tries to summarize it again.
 
 ## Usage
 
-### `agentlog sync <claude|codex> <transcript>`
+### `reg-a sync <claude|codex> <transcript>`
 
 Brings a session's JSON file up to date with its transcript. The hooks run this for you; run it yourself to record a session from before you installed the hooks, or to retry.
 
 ```sh
-agentlog sync claude ~/.claude/projects/-home-me-myproject/<session-id>.jsonl
-agentlog sync codex ~/.codex/sessions/2026/10/27/rollout-<timestamp>-<session-id>.jsonl
+reg-a sync claude ~/.claude/projects/-home-me-myproject/<session-id>.jsonl
+reg-a sync codex ~/.codex/sessions/2026/10/27/rollout-<timestamp>-<session-id>.jsonl
 ```
 
 Running it again is safe: turns already summarized are kept, and only new or changed turns go to the LLM.
@@ -99,7 +99,7 @@ Running it again is safe: turns already summarized are kept, and only new or cha
 - `--retry-failed`: also re-summarize stored turns whose summary failed (new turns go first; if the LLM server is unreachable, the run stops calling it after the first failure). Hooks always pass this flag.
 - `--delay SECONDS`: wait before parsing.
 
-### `agentlog list`
+### `reg-a list`
 
 Lists recorded sessions, most recently updated first: start time (UTC), tool, session id, number of turns, and title or working directory.
 
@@ -107,33 +107,33 @@ Lists recorded sessions, most recently updated first: start time (UTC), tool, se
 2026-10-27 18:41  claude-code  4f9c2e1a-...  12 turns  Session logging tool
 ```
 
-### `agentlog convert-to-pdf <session | --all>`
+### `reg-a convert-to-pdf <session | --all>`
 
 Renders a session to a LaTeX report and builds the PDF. `session` is a session id, a unique prefix of one, or a path to a session JSON file.
 
 ```sh
-agentlog convert-to-pdf 4f9c2e1a
-agentlog convert-to-pdf --all
-agentlog convert-to-pdf 4f9c2e1a -o ~/reports
-agentlog convert-to-pdf 4f9c2e1a --tex-only   # write the .tex only, no TeX Live needed
+reg-a convert-to-pdf 4f9c2e1a
+reg-a convert-to-pdf --all
+reg-a convert-to-pdf 4f9c2e1a -o ~/reports
+reg-a convert-to-pdf 4f9c2e1a --tex-only   # write the .tex only, no TeX Live needed
 ```
 
 Output goes to `<output_dir>/reports/` unless you pass `-o`. The report has an overview (tool, directory, total work time, models), a table of all turns, and a detail section per turn with the prompt, summary, actions, open issues, files changed and commands run.
 
 ### Other commands
 
-- `agentlog init-config`: write the example config (see above).
-- `agentlog hook <claude|codex> [payload]`: the hook entry point. Claude Code and Codex call it; you don't need to.
+- `reg-a init-config`: write the example config (see above).
+- `reg-a hook <claude|codex> [payload]`: the hook entry point. Claude Code and Codex call it; you don't need to.
 - `--config PATH` (before the subcommand) uses another config file with any command.
 
 ## Output
 
 ```
-~/agentlog/sessions/
+~/reg-a/sessions/
 ├── claude-code-<session-id>.json    # one file per session
 ├── codex-<session-id>.json
 ├── *.lock                           # lock files used while writing
-├── agentlog.log                     # background worker log
+├── reg-a.log                     # background worker log
 └── reports/
     ├── claude-code-<session-id>.tex
     └── claude-code-<session-id>.pdf

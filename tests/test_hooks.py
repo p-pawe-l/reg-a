@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from agentlog import hooks
+from reg_a import hooks
 
-FAKE_EXE = "/opt/bin/agentlog"
+FAKE_EXE = "/opt/bin/reg-a"
 
 
 @pytest.fixture
@@ -27,13 +27,13 @@ def popen_calls(monkeypatch):
     return calls
 
 
-def test_agentlog_command_prefers_installed_executable(fake_which):
-    assert hooks.agentlog_command() == [FAKE_EXE]
+def test_reg_a_command_prefers_installed_executable(fake_which):
+    assert hooks.reg_a_command() == [FAKE_EXE]
 
 
-def test_agentlog_command_falls_back_to_python_module(monkeypatch):
+def test_reg_a_command_falls_back_to_python_module(monkeypatch):
     monkeypatch.setattr(hooks.shutil, "which", lambda name: None)
-    assert hooks.agentlog_command() == [sys.executable, "-m", "agentlog"]
+    assert hooks.reg_a_command() == [sys.executable, "-m", "reg_a"]
 
 
 def test_spawn_sync_launches_detached_worker_with_delay(cfg, fake_which, popen_calls, tmp_path):
@@ -53,8 +53,8 @@ def test_spawn_sync_launches_detached_worker_with_delay(cfg, fake_which, popen_c
     ]
     assert kwargs["start_new_session"] is True
     assert kwargs["stdin"] is subprocess.DEVNULL
-    assert kwargs["stdout"].name == str(cfg.output_dir / "agentlog.log")
-    assert (cfg.output_dir / "agentlog.log").exists()
+    assert kwargs["stdout"].name == str(cfg.output_dir / "reg-a.log")
+    assert (cfg.output_dir / "reg-a.log").exists()
 
 
 def test_spawn_sync_without_config_path_omits_flag(cfg, fake_which, popen_calls):
@@ -189,3 +189,34 @@ def test_install_codex_refuses_to_overwrite_foreign_notify(tmp_path, fake_which)
     with pytest.raises(SystemExit, match="won't overwrite"):
         hooks.install_codex(config)
     assert config.read_text() == 'notify = ["my-notifier"]\n'
+
+
+def test_install_claude_recognizes_python_m_form_as_already_installed(tmp_path, monkeypatch):
+    monkeypatch.setattr(hooks.shutil, "which", lambda name: None)
+    settings = tmp_path / "settings.json"
+    assert "added" in hooks.install_claude(settings)
+    assert "-m reg_a hook claude" in settings.read_text()
+    assert "already present" in hooks.install_claude(settings)
+
+
+def test_unrelated_hook_mentioning_the_repo_path_is_not_ours(tmp_path):
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "Stop": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "/home/x/reg-a/notify.sh hook claude-ish",
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        )
+    )
+    assert "added Stop, SessionEnd" in hooks.install_claude(settings)

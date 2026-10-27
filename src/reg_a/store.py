@@ -11,7 +11,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from agentlog.models import Session, Tool
+from reg_a.models import Session, Tool
 
 
 def session_path(output_dir: Path, tool: Tool, session_id: str) -> Path:

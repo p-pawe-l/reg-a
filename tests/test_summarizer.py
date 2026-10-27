@@ -4,9 +4,9 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from agentlog.config import LLMConfig
-from agentlog.models import ParsedTurn, TurnSummary
-from agentlog.summarizer import (
+from reg_a.config import LLMConfig
+from reg_a.models import ParsedTurn, TurnSummary
+from reg_a.summarizer import (
     Summarizer,
     SummaryError,
     _extract_json,
@@ -160,13 +160,13 @@ def test_extract_json_cuts_prose_around_the_object():
 
 
 def test_api_key_header_is_sent_only_when_env_var_is_set(monkeypatch):
-    monkeypatch.setenv("AGENTLOG_TEST_KEY", "sk-test")
-    s = Summarizer(LLMConfig(api_key_env="AGENTLOG_TEST_KEY"), "en")
+    monkeypatch.setenv("REG_A_TEST_KEY", "sk-test")
+    s = Summarizer(LLMConfig(api_key_env="REG_A_TEST_KEY"), "en")
     assert s.client.headers["Authorization"] == "Bearer sk-test"
     assert str(s.client.base_url) == "http://localhost:11434/v1/"
 
-    monkeypatch.delenv("AGENTLOG_TEST_KEY")
-    s = Summarizer(LLMConfig(api_key_env="AGENTLOG_TEST_KEY"), "en")
+    monkeypatch.delenv("REG_A_TEST_KEY")
+    s = Summarizer(LLMConfig(api_key_env="REG_A_TEST_KEY"), "en")
     assert "Authorization" not in s.client.headers
 
 
@@ -186,7 +186,7 @@ def test_language_name_maps_codes_case_insensitively_and_passes_names_through():
 
 
 def test_connection_failure_marks_error_as_unavailable():
-    from agentlog.summarizer import SummaryError
+    from reg_a.summarizer import SummaryError
 
     def handler(request):
         raise httpx.ConnectError("refused")

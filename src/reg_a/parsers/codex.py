@@ -8,8 +8,8 @@ events (UserMessage, AgentMessage, CommandExecution, FileChange, ...).
 from collections import Counter
 from pathlib import Path
 
-from agentlog.models import ParsedSession, ParsedTurn
-from agentlog.parsers import EmptyTranscriptError, Excerpt, parse_ts, read_jsonl
+from reg_a.models import ParsedSession, ParsedTurn
+from reg_a.parsers import EmptyTranscriptError, Excerpt, parse_ts, read_jsonl
 
 
 class _OpenTurn:
